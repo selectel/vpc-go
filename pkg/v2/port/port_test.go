@@ -1,0 +1,103 @@
+package port
+
+import (
+	"context"
+	"io"
+	"net/http"
+	"strings"
+	"testing"
+
+	vpc "github.com/selectel/vpc-go/pkg/v2"
+)
+
+type scriptedClient struct {
+	requests  []*http.Request
+	responses []*http.Response
+}
+
+func (c *scriptedClient) Do(r *http.Request) (*http.Response, error) {
+	c.requests = append(c.requests, r)
+	return c.responses[len(c.requests)-1], nil
+}
+func response(status int, body string) *http.Response {
+	return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body))}
+}
+func newClient(t *testing.T, responses ...*http.Response) (*vpc.Client, *scriptedClient) {
+	t.Helper()
+	transport := &scriptedClient{responses: responses}
+	client, err := vpc.NewClient(vpc.Config{Endpoint: "https://network.example.test", Token: "token", HTTPClient: transport})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return client, transport
+}
+
+func TestPortCRUDCollectionsAndFields(t *testing.T) {
+	model := `{"port":{"id":"id","network_id":"net","status":"DOWN","binding:vnic_type":"normal","blocked":true,"dhcp_blocked":true}}`
+	client, transport := newClient(t, response(201, model), response(200, model), response(200, model), response(204, ""))
+	emptyStrings := []string{}
+	emptyIPs := []FixedIP{}
+	emptyPairs := []AllowedAddressPair{}
+	emptyDHCP := []ExtraDHCPOption{}
+	if _, err := Create(context.Background(), client, CreateRequest{NetworkID: "net", SecurityGroups: &emptyStrings}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Get(context.Background(), client, "id"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Update(context.Background(), client, "id", UpdateRequest{
+		FixedIPs: &emptyIPs, SecurityGroups: &emptyStrings,
+		AllowedAddressPairs: &emptyPairs, ExtraDHCPOptions: &emptyDHCP,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Delete(context.Background(), client, "id"); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(transport.requests[2].Body)
+	for _, field := range []string{`"fixed_ips":[]`, `"security_groups":[]`, `"allowed_address_pairs":[]`, `"extra_dhcp_opts":[]`} {
+		if !strings.Contains(string(body), field) {
+			t.Fatalf("update body %s lacks %s", body, field)
+		}
+	}
+	for _, forbidden := range []string{"mac_address", "blocked", "dhcp_blocked", "qos_policy_id", "port_security_enabled"} {
+		if strings.Contains(string(body), forbidden) {
+			t.Fatalf("update body contains %s", forbidden)
+		}
+	}
+}
+
+func TestPortListErrorsAndTags(t *testing.T) {
+	client, _ := newClient(t,
+		response(200, `{"ports":[{"id":"one"}],"ports_links":[]}`),
+	)
+	ports, err := List(context.Background(), client, vpc.ListOptions{SelectionOptions: vpc.SelectionOptions{Filters: map[string][]string{"network_id": {"net"}}}})
+	if err != nil || len(ports) != 1 {
+		t.Fatalf("List()=%+v,%v", ports, err)
+	}
+
+	for _, test := range []struct {
+		status int
+		kind   string
+		class  vpc.ErrorClass
+	}{
+		{409, "IpAddressInUse", vpc.ErrorClassConflict},
+		{409, "IpAddressGenerationFailure", vpc.ErrorClassAddressUnavailable},
+		{400, "BadRequest", vpc.ErrorClassBadRequest},
+	} {
+		client, _ := newClient(t, response(test.status, `{"NeutronError":{"type":"`+test.kind+`","message":"failure"}}`))
+		_, err := Create(context.Background(), client, CreateRequest{NetworkID: "net"})
+		if !vpc.IsErrorClass(err, test.class) {
+			t.Fatalf("%s error=%v want %s", test.kind, err, test.class)
+		}
+	}
+
+	client, transport := newClient(t,
+		response(403, `{"NeutronError":{"type":"PolicyNotAuthorized","message":"blocked"}}`),
+		response(200, `{"port":{"id":"id","blocked":true}}`),
+	)
+	err = TagOperations(client, "id").Replace(context.Background(), []string{})
+	if !vpc.IsErrorClass(err, vpc.ErrorClassResourceBlocked) || len(transport.requests) != 2 {
+		t.Fatalf("tag error=%v requests=%d", err, len(transport.requests))
+	}
+}
