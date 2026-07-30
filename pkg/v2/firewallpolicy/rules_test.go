@@ -2,6 +2,7 @@ package firewallpolicy
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -9,6 +10,21 @@ import (
 
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
+
+func TestInsertRuleRejectsInvalidPositionWithoutHTTP(t *testing.T) {
+	client, transport := newClient(t)
+	var typedNil *beforePosition
+	for _, position := range []InsertPosition{nil, typedNil, BeforeRule(""), AfterRule("")} {
+		_, err := InsertRule(context.Background(), client, "policy", "rule", position)
+		var clientErr *vpc.ClientError
+		if !errors.As(err, &clientErr) {
+			t.Fatalf("position %#v error=%v, want ClientError", position, err)
+		}
+	}
+	if len(transport.requests) != 0 {
+		t.Fatalf("requests=%d, want 0", len(transport.requests))
+	}
+}
 
 func TestFirewallPolicyRuleInsertAndRemoveUseAtomicPaths(t *testing.T) {
 	client, transport := newClient(

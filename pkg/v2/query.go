@@ -99,6 +99,7 @@ func WalkPages[T any](
 			if pageNumber == 0 {
 				return nil, err
 			}
+
 			return nil, &IncompleteListError{Err: err}
 		}
 		result = append(result, page.Items...)
@@ -128,5 +129,6 @@ func cloneValues(values url.Values) url.Values {
 	for key, items := range values {
 		cloned[key] = append([]string(nil), items...)
 	}
+
 	return cloned
 }

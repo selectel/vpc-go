@@ -122,6 +122,22 @@ func TestFirewallRuleExplicitEmptySourceAddress(t *testing.T) {
 	}
 }
 
+func TestFirewallRuleResponsePreservesNullFields(t *testing.T) {
+	client, _ := newClient(t, response(http.StatusOK,
+		`{"firewall_rule":{"id":"rule-id","protocol":null,"source_ip_address":null,`+
+			`"destination_ip_address":null,"source_port":null,"destination_port":null}}`,
+	))
+	rule, err := Get(context.Background(), client, "rule-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rule.Protocol != nil || rule.SourceIPAddress != nil ||
+		rule.DestinationIPAddress != nil || rule.SourcePort != nil ||
+		rule.DestinationPort != nil {
+		t.Fatalf("rule=%+v", rule)
+	}
+}
+
 func TestFirewallRulePublicTypesExcludeUnsupportedFields(t *testing.T) {
 	for _, value := range []any{FirewallRule{}, CreateRequest{}, UpdateRequest{}} {
 		typ := reflect.TypeOf(value)

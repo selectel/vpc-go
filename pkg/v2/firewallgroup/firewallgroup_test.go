@@ -130,7 +130,7 @@ func TestFirewallGroupListAndIncompleteList(t *testing.T) {
 	}
 }
 
-func TestFirewallGroupErrorsPreserveClassStatusAndMessage(t *testing.T) {
+func TestFirewallGroupErrorsPreserveClassAndMessage(t *testing.T) {
 	client, transport := newClient(t, response(
 		http.StatusConflict,
 		`{"NeutronError":{"type":"FirewallGroupInPendingState","message":"try later","status":"PENDING_UPDATE"}}`,
@@ -139,7 +139,6 @@ func TestFirewallGroupErrorsPreserveClassStatusAndMessage(t *testing.T) {
 	var apiErr *vpc.APIError
 	if !errors.As(err, &apiErr) ||
 		apiErr.Class != vpc.ErrorClassConflict ||
-		apiErr.ResourceStatus != "PENDING_UPDATE" ||
 		apiErr.Message != "try later" {
 		t.Fatalf("error=%+v", err)
 	}

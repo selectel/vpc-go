@@ -2,8 +2,12 @@ package router
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/url"
+	"reflect"
+
+	"github.com/selectel/vpc-go/internal/api"
 
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
@@ -66,18 +70,32 @@ func interfaceRequest(
 	action string,
 	selector InterfaceSelector,
 ) (*InterfaceResult, error) {
+	if selector == nil || isNilSelector(selector) {
+		return nil, &vpc.ClientError{Err: errors.New("router interface selector is required")}
+	}
+	payload := selector.payload()
+	if (payload.SubnetID == "") == (payload.PortID == "") {
+		return nil, &vpc.ClientError{
+			Err: errors.New("router interface selector must contain exactly one non-empty ID"),
+		}
+	}
+
 	var result InterfaceResult
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPut,
 		collectionPath+"/"+url.PathEscape(routerID)+"/"+action,
 		nil,
-		selector.payload(),
+		payload,
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
 	}
 	return &result, nil
+}
+
+func isNilSelector(selector InterfaceSelector) bool {
+	value := reflect.ValueOf(selector)
+	return value.Kind() == reflect.Pointer && value.IsNil()
 }

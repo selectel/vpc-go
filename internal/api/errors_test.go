@@ -1,4 +1,4 @@
-package v2
+package api
 
 import (
 	"context"
@@ -12,13 +12,13 @@ import (
 func TestErrorSourcesAreDistinct(t *testing.T) {
 	clientErr := &ClientError{Err: errors.New("encode")}
 	transportErr := &TransportError{Err: errors.New("connection reset")}
-	apiErr := newAPIError(http.StatusNotFound, []byte(
+	apiErr := NewAPIError(http.StatusNotFound, []byte(
 		`{"NeutronError":{"type":"NetworkNotFound","message":"missing","detail":"network id"}}`,
 	))
 
 	var gotClient *ClientError
 	var gotTransport *TransportError
-	var gotAPI *APIError
+	var gotAPI *Error
 	if !errors.As(clientErr, &gotClient) {
 		t.Fatal("ClientError is not distinguishable")
 	}
@@ -59,7 +59,7 @@ func TestErrorClasses(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			body := []byte(`{"NeutronError":{"type":"` + test.errorType + `","message":"failure"}}`)
-			err := newAPIError(test.statusCode, body)
+			err := NewAPIError(test.statusCode, body)
 			if err.Class != test.want {
 				t.Fatalf("class = %q, want %q", err.Class, test.want)
 			}
@@ -67,7 +67,7 @@ func TestErrorClasses(t *testing.T) {
 	}
 }
 
-func TestErrorBlockedDiagnostic(t *testing.T) {
+func TestForbiddenDoesNotPerformDiagnosticRead(t *testing.T) {
 	httpClient := &recordingHTTPClient{
 		do: func(*http.Request) (*http.Response, error) {
 			return &http.Response{
@@ -87,71 +87,25 @@ func TestErrorBlockedDiagnostic(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	diagnosticReads := 0
-	err = client.Request(
-		context.Background(),
+	err = Request(
+		context.Background(), client,
 		http.MethodPut,
 		"/v2.0/networks/id",
 		nil,
 		map[string]any{"network": map[string]string{"name": "new"}},
 		nil,
-		RequestOptions{
-			ExpectedStatus: []int{http.StatusOK},
-			ReadBlocked: func(context.Context) (bool, error) {
-				diagnosticReads++
-				return true, nil
-			},
-		},
+		RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
-	if !IsErrorClass(err, ErrorClassResourceBlocked) {
-		t.Fatalf("Request() error = %v, want blocked class", err)
-	}
-	if diagnosticReads != 1 {
-		t.Fatalf("diagnostic read count = %d, want 1", diagnosticReads)
+	if !IsErrorClass(err, ErrorClassForbidden) {
+		t.Fatalf("Request() error = %v, want forbidden class", err)
 	}
 
-	var apiErr *APIError
+	var apiErr *Error
 	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusForbidden {
 		t.Fatalf("Request() did not preserve API error: %v", err)
 	}
-}
-
-func TestErrorBlockedDiagnosticFallback(t *testing.T) {
-	for _, diagnostic := range []func(context.Context) (bool, error){
-		func(context.Context) (bool, error) { return false, nil },
-		func(context.Context) (bool, error) { return false, errors.New("not readable") },
-	} {
-		httpClient := &recordingHTTPClient{
-			do: func(*http.Request) (*http.Response, error) {
-				return &http.Response{
-					StatusCode: http.StatusForbidden,
-					Body: io.NopCloser(strings.NewReader(
-						`{"NeutronError":{"type":"PolicyNotAuthorized","message":"forbidden"}}`,
-					)),
-				}, nil
-			},
-		}
-		client, err := NewClient(Config{
-			Endpoint:   "https://network.example.test",
-			Token:      "token",
-			HTTPClient: httpClient,
-		})
-		if err != nil {
-			t.Fatalf("NewClient() error = %v", err)
-		}
-
-		err = client.Request(
-			context.Background(),
-			http.MethodDelete,
-			"/v2.0/networks/id",
-			nil,
-			nil,
-			nil,
-			RequestOptions{ExpectedStatus: []int{http.StatusNoContent}, ReadBlocked: diagnostic},
-		)
-		if !IsErrorClass(err, ErrorClassForbidden) {
-			t.Fatalf("Request() error = %v, want forbidden class", err)
-		}
+	if len(httpClient.requests) != 1 {
+		t.Fatalf("request count = %d, want 1", len(httpClient.requests))
 	}
 }
 
@@ -174,8 +128,8 @@ func TestErrorUnexpectedResponse(t *testing.T) {
 	}
 
 	var target map[string]any
-	err = client.Request(
-		context.Background(),
+	err = Request(
+		context.Background(), client,
 		http.MethodGet,
 		"/v2.0/networks/id",
 		nil,
@@ -185,6 +139,44 @@ func TestErrorUnexpectedResponse(t *testing.T) {
 	)
 	if !IsErrorClass(err, ErrorClassUnexpectedResponse) {
 		t.Fatalf("Request() error = %v, want unexpected response class", err)
+	}
+}
+
+func TestErrorUnexpectedResourceEnvelope(t *testing.T) {
+	for _, body := range []string{
+		`{}`,
+		`null`,
+		`{"network":null}`,
+		`{"network":{}}`,
+	} {
+		t.Run(body, func(t *testing.T) {
+			httpClient := &recordingHTTPClient{
+				do: func(*http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(strings.NewReader(body)),
+					}, nil
+				},
+			}
+			client, err := NewClient(Config{
+				Endpoint: "https://network.example.test", Token: "token", HTTPClient: httpClient,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var target struct {
+				Network struct {
+					ID string `json:"id"`
+				} `json:"network"`
+			}
+			err = Request(
+				context.Background(), client, http.MethodGet, "/v2.0/networks/id",
+				nil, nil, &target, RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			)
+			if !IsErrorClass(err, ErrorClassUnexpectedResponse) {
+				t.Fatalf("Request() error = %v, want unexpected response", err)
+			}
+		})
 	}
 }
 
@@ -204,8 +196,8 @@ func TestErrorTransportDoesNotRetry(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	err = client.Request(
-		context.Background(),
+	err = Request(
+		context.Background(), client,
 		http.MethodPost,
 		"/v2.0/networks",
 		nil,

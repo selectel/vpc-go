@@ -48,7 +48,7 @@ func response(status int, body string) *http.Response {
 func TestNetworkCRUDAndFields(t *testing.T) {
 	model := `{"network":{"id":"id","name":"net","status":"BUILD","shared":true,` +
 		`"router:external":true,"provider:network_type":"vxlan","blocked":true,` +
-		`"is_public":true,"is_dns_enabled":true,"revision_number":2}}`
+		`"is_public":true,"is_dns_enabled":true,"dns_domain":"example.test.","revision_number":2}}`
 	client, transport := newTestClient(
 		t,
 		response(http.StatusCreated, model),
@@ -60,17 +60,20 @@ func TestNetworkCRUDAndFields(t *testing.T) {
 	description := "description"
 	adminStateUp := true
 	hints := []string{"ru-1a"}
+	dnsDomain := "example.test."
 
 	created, err := Create(context.Background(), client, CreateRequest{
 		Name:                  &name,
 		Description:           &description,
 		AdminStateUp:          &adminStateUp,
 		AvailabilityZoneHints: &hints,
+		DNSDomain:             &dnsDomain,
 	})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if created.Status != "BUILD" || !created.Blocked || !created.RouterExternal {
+	if created.Status != "BUILD" || !created.Blocked || !created.RouterExternal ||
+		created.DNSDomain != "example.test." {
 		t.Fatalf("created network = %+v", created)
 	}
 	if _, err := Get(context.Background(), client, "id"); err != nil {
@@ -80,7 +83,7 @@ func TestNetworkCRUDAndFields(t *testing.T) {
 		context.Background(),
 		client,
 		"id",
-		UpdateRequest{Name: &name},
+		UpdateRequest{Name: &name, DNSDomain: &dnsDomain},
 	); err != nil {
 		t.Fatalf("Update() error = %v", err)
 	}
@@ -101,6 +104,9 @@ func TestNetworkCRUDAndFields(t *testing.T) {
 		t.Fatalf("read create body: %v", err)
 	}
 	createJSON := string(body)
+	if !strings.Contains(createJSON, `"dns_domain":"example.test."`) {
+		t.Fatalf("create body %s lacks dns_domain", createJSON)
+	}
 	for _, forbidden := range []string{
 		`"shared"`, `"router:external"`, `"provider:"`, `"segments"`,
 		`"qos_policy_id"`, `"mtu"`, `"port_security_enabled"`, `"blocked"`,
@@ -203,14 +209,18 @@ func TestNetworkTagsReplaceAndBlocked(t *testing.T) {
 	)
 	tags := TagOperations(client, "id")
 
-	if err := tags.Replace(context.Background(), []string{"new"}); err != nil {
+	replaced, err := tags.Replace(context.Background(), []string{"new"})
+	if err != nil {
 		t.Fatalf("Replace() error = %v", err)
 	}
-	err := tags.Add(context.Background(), "tag")
-	if !vpc.IsErrorClass(err, vpc.ErrorClassResourceBlocked) {
-		t.Fatalf("Add() error = %v, want blocked", err)
+	if len(replaced) != 1 || replaced[0] != "new" {
+		t.Fatalf("Replace() = %v, want [new]", replaced)
 	}
-	if len(transport.requests) != 3 {
-		t.Fatalf("request count = %d, want 3", len(transport.requests))
+	err = tags.Add(context.Background(), "tag")
+	if !vpc.IsErrorClass(err, vpc.ErrorClassForbidden) {
+		t.Fatalf("Add() error = %v, want forbidden", err)
+	}
+	if len(transport.requests) != 2 {
+		t.Fatalf("request count = %d, want 2", len(transport.requests))
 	}
 }

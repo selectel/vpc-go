@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/selectel/vpc-go/internal/api"
+
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
@@ -52,12 +54,11 @@ func Create(
 	request CreateRequest,
 ) (*AddressScope, error) {
 	var result envelope
-	err := client.Request(
-		ctx, http.MethodPost, collectionPath, nil,
+	err := api.Request(ctx, client, http.MethodPost, collectionPath, nil,
 		struct {
 			AddressScope CreateRequest `json:"address_scope"`
 		}{AddressScope: request},
-		&result, vpc.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		&result, api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
 	)
 	if err != nil {
 		return nil, err
@@ -67,9 +68,8 @@ func Create(
 
 func Get(ctx context.Context, client *vpc.Client, id string) (*AddressScope, error) {
 	var result envelope
-	err := client.Request(
-		ctx, http.MethodGet, resourcePath(id), nil, nil, &result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+	err := api.Request(ctx, client, http.MethodGet, resourcePath(id), nil, nil, &result,
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -84,12 +84,11 @@ func Update(
 	request UpdateRequest,
 ) (*AddressScope, error) {
 	var result envelope
-	err := client.Request(
-		ctx, http.MethodPut, resourcePath(id), nil,
+	err := api.Request(ctx, client, http.MethodPut, resourcePath(id), nil,
 		struct {
 			AddressScope UpdateRequest `json:"address_scope"`
 		}{AddressScope: request},
-		&result, vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		&result, api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -98,9 +97,8 @@ func Update(
 }
 
 func Delete(ctx context.Context, client *vpc.Client, id string) error {
-	return client.Request(
-		ctx, http.MethodDelete, resourcePath(id), nil, nil, nil,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
+	return api.Request(ctx, client, http.MethodDelete, resourcePath(id), nil, nil, nil,
+		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
 	)
 }
 
@@ -114,9 +112,8 @@ func List(
 		query url.Values,
 	) (vpc.Page[AddressScope], error) {
 		var result listEnvelope
-		err := client.Request(
-			ctx, http.MethodGet, collectionPath, query, nil, &result,
-			vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		err := api.Request(ctx, client, http.MethodGet, collectionPath, query, nil, &result,
+			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 		)
 		return vpc.Page[AddressScope]{
 			Items: result.AddressScopes, NextLink: nextLink(result.Links),

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/selectel/vpc-go/internal/api"
+
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
@@ -24,6 +26,8 @@ type SecurityGroup struct {
 }
 
 // SecurityGroupRule is an observable rule embedded in a security group.
+//
+//nolint:revive // The explicit name avoids ambiguity with rules from other resource packages.
 type SecurityGroupRule struct {
 	ID              string  `json:"id"`
 	SecurityGroupID string  `json:"security_group_id"`
@@ -68,8 +72,7 @@ type link struct {
 
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*SecurityGroup, error) {
 	var result envelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPost,
 		collectionPath,
 		nil,
@@ -77,7 +80,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Se
 			SecurityGroup CreateRequest `json:"security_group"`
 		}{SecurityGroup: request},
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
 	)
 	if err != nil {
 		return nil, err
@@ -87,14 +90,13 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Se
 
 func Get(ctx context.Context, client *vpc.Client, securityGroupID string) (*SecurityGroup, error) {
 	var result envelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodGet,
 		resourcePath(securityGroupID),
 		nil,
 		nil,
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -109,8 +111,7 @@ func Update(
 	request UpdateRequest,
 ) (*SecurityGroup, error) {
 	var result envelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPut,
 		resourcePath(securityGroupID),
 		nil,
@@ -118,7 +119,7 @@ func Update(
 			SecurityGroup UpdateRequest `json:"security_group"`
 		}{SecurityGroup: request},
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -127,14 +128,13 @@ func Update(
 }
 
 func Delete(ctx context.Context, client *vpc.Client, securityGroupID string) error {
-	return client.Request(
-		ctx,
+	return api.Request(ctx, client,
 		http.MethodDelete,
 		resourcePath(securityGroupID),
 		nil,
 		nil,
 		nil,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
 	)
 }
 
@@ -148,14 +148,13 @@ func List(
 		query url.Values,
 	) (vpc.Page[SecurityGroup], error) {
 		var result listEnvelope
-		err := client.Request(
-			ctx,
+		err := api.Request(ctx, client,
 			http.MethodGet,
 			collectionPath,
 			query,
 			nil,
 			&result,
-			vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 		)
 		return vpc.Page[SecurityGroup]{
 			Items:    result.SecurityGroups,
@@ -165,11 +164,11 @@ func List(
 }
 
 type Tags struct {
-	operations vpc.TagOperations
+	operations api.TagOperations
 }
 
 func TagOperations(client *vpc.Client, securityGroupID string) Tags {
-	return Tags{operations: vpc.NewTagOperations(client, "security-groups", securityGroupID, nil)}
+	return Tags{operations: api.NewTagOperations(client, "security-groups", securityGroupID)}
 }
 
 func (tags Tags) Get(ctx context.Context) ([]string, error) {
@@ -188,7 +187,7 @@ func (tags Tags) Delete(ctx context.Context, tag string) error {
 	return tags.operations.Delete(ctx, tag)
 }
 
-func (tags Tags) Replace(ctx context.Context, values []string) error {
+func (tags Tags) Replace(ctx context.Context, values []string) ([]string, error) {
 	return tags.operations.Replace(ctx, values)
 }
 

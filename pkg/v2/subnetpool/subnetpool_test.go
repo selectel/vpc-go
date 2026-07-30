@@ -50,7 +50,9 @@ func TestSubnetPoolCRUDAndPrefixReplacement(t *testing.T) {
 		t.Fatalf("Get() error = %v", err)
 	}
 	if _, err := Update(
-		context.Background(), client, "id", UpdateRequest{Prefixes: &prefixes},
+		context.Background(), client, "id", UpdateRequest{
+			Prefixes: &prefixes, AddressScopeID: vpc.Null[string](),
+		},
 	); err != nil {
 		t.Fatalf("Update() error = %v", err)
 	}
@@ -63,6 +65,9 @@ func TestSubnetPoolCRUDAndPrefixReplacement(t *testing.T) {
 		t.Fatalf("read update body: %v", err)
 	}
 	if !strings.Contains(string(body), `"prefixes":["192.0.2.0/24"]`) {
+		t.Fatalf("update body = %s", body)
+	}
+	if !strings.Contains(string(body), `"address_scope_id":null`) {
 		t.Fatalf("update body = %s", body)
 	}
 	for _, forbidden := range []string{`"is_default"`, `"shared"`, `"ip_version"`} {

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/selectel/vpc-go/internal/api"
+
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
@@ -57,8 +59,7 @@ func CreatePortForwarding(
 	request PortForwardingCreateRequest,
 ) (*PortForwarding, error) {
 	var envelope portForwardingEnvelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPost,
 		portForwardingCollectionPath(floatingIPID),
 		nil,
@@ -66,7 +67,7 @@ func CreatePortForwarding(
 			PortForwarding PortForwardingCreateRequest `json:"port_forwarding"`
 		}{PortForwarding: request},
 		&envelope,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
 	)
 	if err != nil {
 		return nil, err
@@ -82,14 +83,13 @@ func GetPortForwarding(
 	portForwardingID string,
 ) (*PortForwarding, error) {
 	var envelope portForwardingEnvelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodGet,
 		portForwardingResourcePath(floatingIPID, portForwardingID),
 		nil,
 		nil,
 		&envelope,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -106,8 +106,7 @@ func UpdatePortForwarding(
 	request PortForwardingUpdateRequest,
 ) (*PortForwarding, error) {
 	var envelope portForwardingEnvelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPut,
 		portForwardingResourcePath(floatingIPID, portForwardingID),
 		nil,
@@ -115,7 +114,7 @@ func UpdatePortForwarding(
 			PortForwarding PortForwardingUpdateRequest `json:"port_forwarding"`
 		}{PortForwarding: request},
 		&envelope,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -130,14 +129,13 @@ func DeletePortForwarding(
 	floatingIPID string,
 	portForwardingID string,
 ) error {
-	return client.Request(
-		ctx,
+	return api.Request(ctx, client,
 		http.MethodDelete,
 		portForwardingResourcePath(floatingIPID, portForwardingID),
 		nil,
 		nil,
 		nil,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
 	)
 }
 
@@ -153,14 +151,13 @@ func ListPortForwardings(
 		query url.Values,
 	) (vpc.Page[PortForwarding], error) {
 		var envelope portForwardingListEnvelope
-		err := client.Request(
-			ctx,
+		err := api.Request(ctx, client,
 			http.MethodGet,
 			portForwardingCollectionPath(floatingIPID),
 			query,
 			nil,
 			&envelope,
-			vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 		)
 		return vpc.Page[PortForwarding]{
 			Items:    envelope.PortForwardings,

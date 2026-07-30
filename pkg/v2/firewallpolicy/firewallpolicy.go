@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/selectel/vpc-go/internal/api"
+
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
@@ -54,8 +56,7 @@ type link struct {
 
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*FirewallPolicy, error) {
 	var result envelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPost,
 		collectionPath,
 		nil,
@@ -63,7 +64,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Fi
 			FirewallPolicy CreateRequest `json:"firewall_policy"`
 		}{FirewallPolicy: request},
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
 	)
 	if err != nil {
 		return nil, err
@@ -73,14 +74,13 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Fi
 
 func Get(ctx context.Context, client *vpc.Client, firewallPolicyID string) (*FirewallPolicy, error) {
 	var result envelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodGet,
 		resourcePath(firewallPolicyID),
 		nil,
 		nil,
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -95,8 +95,7 @@ func Update(
 	request UpdateRequest,
 ) (*FirewallPolicy, error) {
 	var result envelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPut,
 		resourcePath(firewallPolicyID),
 		nil,
@@ -104,7 +103,7 @@ func Update(
 			FirewallPolicy UpdateRequest `json:"firewall_policy"`
 		}{FirewallPolicy: request},
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -113,14 +112,13 @@ func Update(
 }
 
 func Delete(ctx context.Context, client *vpc.Client, firewallPolicyID string) error {
-	return client.Request(
-		ctx,
+	return api.Request(ctx, client,
 		http.MethodDelete,
 		resourcePath(firewallPolicyID),
 		nil,
 		nil,
 		nil,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
 	)
 }
 
@@ -134,14 +132,13 @@ func List(
 		query url.Values,
 	) (vpc.Page[FirewallPolicy], error) {
 		var result listEnvelope
-		err := client.Request(
-			ctx,
+		err := api.Request(ctx, client,
 			http.MethodGet,
 			collectionPath,
 			query,
 			nil,
 			&result,
-			vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 		)
 		return vpc.Page[FirewallPolicy]{
 			Items:    result.FirewallPolicies,

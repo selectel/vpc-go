@@ -28,9 +28,9 @@
 // ClientError, TransportError, UnexpectedResponseError, IncompleteListError,
 // and APIError distinguish failure sources. IsErrorClass classifies API
 // failures, including quota and address allocation failures that share an HTTP
-// status with ordinary conflicts. On resources with the Selectel blocked
-// attribute, write operations distinguish a readable blocked resource from an
-// ordinary authorization failure.
+// status with ordinary conflicts. PolicyNotAuthorized remains a general policy
+// failure; the SDK does not issue a diagnostic read to infer whether a
+// resource is blocked.
 //
 // A not-found class returned by update or delete may be a Neutron policy
 // failure masked as absence. It does not prove the resource is absent. APIError

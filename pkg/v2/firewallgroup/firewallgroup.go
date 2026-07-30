@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/selectel/vpc-go/internal/api"
+
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
@@ -61,8 +63,7 @@ type link struct {
 
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*FirewallGroup, error) {
 	var result envelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPost,
 		collectionPath,
 		nil,
@@ -70,7 +71,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Fi
 			FirewallGroup CreateRequest `json:"firewall_group"`
 		}{FirewallGroup: request},
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
 	)
 	if err != nil {
 		return nil, err
@@ -80,14 +81,13 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Fi
 
 func Get(ctx context.Context, client *vpc.Client, firewallGroupID string) (*FirewallGroup, error) {
 	var result envelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodGet,
 		resourcePath(firewallGroupID),
 		nil,
 		nil,
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -102,8 +102,7 @@ func Update(
 	request UpdateRequest,
 ) (*FirewallGroup, error) {
 	var result envelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPut,
 		resourcePath(firewallGroupID),
 		nil,
@@ -111,7 +110,7 @@ func Update(
 			FirewallGroup UpdateRequest `json:"firewall_group"`
 		}{FirewallGroup: request},
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -120,14 +119,13 @@ func Update(
 }
 
 func Delete(ctx context.Context, client *vpc.Client, firewallGroupID string) error {
-	return client.Request(
-		ctx,
+	return api.Request(ctx, client,
 		http.MethodDelete,
 		resourcePath(firewallGroupID),
 		nil,
 		nil,
 		nil,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
 	)
 }
 
@@ -141,14 +139,13 @@ func List(
 		query url.Values,
 	) (vpc.Page[FirewallGroup], error) {
 		var result listEnvelope
-		err := client.Request(
-			ctx,
+		err := api.Request(ctx, client,
 			http.MethodGet,
 			collectionPath,
 			query,
 			nil,
 			&result,
-			vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 		)
 		return vpc.Page[FirewallGroup]{
 			Items:    result.FirewallGroups,

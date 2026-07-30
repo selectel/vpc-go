@@ -127,11 +127,11 @@ func TestSubnetTagsBlocked(t *testing.T) {
 		response(403, `{"NeutronError":{"type":"PolicyNotAuthorized","message":"blocked"}}`),
 		response(200, `{"subnet":{"id":"id","blocked":true}}`),
 	)
-	err := TagOperations(client, "id").Replace(context.Background(), []string{"tag"})
-	if !vpc.IsErrorClass(err, vpc.ErrorClassResourceBlocked) {
-		t.Fatalf("Replace() error = %v, want blocked", err)
+	_, err := TagOperations(client, "id").Replace(context.Background(), []string{"tag"})
+	if !vpc.IsErrorClass(err, vpc.ErrorClassForbidden) {
+		t.Fatalf("Replace() error = %v, want forbidden", err)
 	}
-	if len(transport.requests) != 2 {
-		t.Fatalf("request count = %d, want 2", len(transport.requests))
+	if len(transport.requests) != 1 {
+		t.Fatalf("request count = %d, want 1", len(transport.requests))
 	}
 }

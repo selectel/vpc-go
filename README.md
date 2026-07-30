@@ -49,10 +49,9 @@ traversal, and API failures. `vpc.IsErrorClass` classifies API failures such as
 bad requests, authentication and authorization failures, not found, conflict,
 quota exceeded, address unavailable, and server errors.
 
-For resources exposing Selectel's `blocked` attribute, update and delete
-operations can classify a readable blocked resource separately from an
-ordinary 403 authorization failure. This diagnostic may require one read after
-the failed write.
+`PolicyNotAuthorized` is returned as a general authorization or policy
+failure. The SDK does not try to infer whether the resource is blocked and
+does not issue a diagnostic read after a failed write.
 
 Important: a not-found class returned by update or delete may be a policy
 failure masked by Neutron and does not prove that the resource is absent.

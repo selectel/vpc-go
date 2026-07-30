@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/selectel/vpc-go/internal/api"
+
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
@@ -88,13 +90,12 @@ type link struct {
 
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Subnet, error) {
 	var result envelope
-	err := client.Request(
-		ctx, http.MethodPost, collectionPath, nil,
+	err := api.Request(ctx, client, http.MethodPost, collectionPath, nil,
 		struct {
 			Subnet CreateRequest `json:"subnet"`
 		}{Subnet: request},
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
 	)
 	if err != nil {
 		return nil, err
@@ -104,9 +105,8 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Su
 
 func Get(ctx context.Context, client *vpc.Client, subnetID string) (*Subnet, error) {
 	var result envelope
-	err := client.Request(
-		ctx, http.MethodGet, resourcePath(subnetID), nil, nil, &result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+	err := api.Request(ctx, client, http.MethodGet, resourcePath(subnetID), nil, nil, &result,
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -121,16 +121,12 @@ func Update(
 	request UpdateRequest,
 ) (*Subnet, error) {
 	var result envelope
-	err := client.Request(
-		ctx, http.MethodPut, resourcePath(subnetID), nil,
+	err := api.Request(ctx, client, http.MethodPut, resourcePath(subnetID), nil,
 		struct {
 			Subnet UpdateRequest `json:"subnet"`
 		}{Subnet: request},
 		&result,
-		vpc.RequestOptions{
-			ExpectedStatus: []int{http.StatusOK},
-			ReadBlocked:    blockedReader(client, subnetID),
-		},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -139,12 +135,8 @@ func Update(
 }
 
 func Delete(ctx context.Context, client *vpc.Client, subnetID string) error {
-	return client.Request(
-		ctx, http.MethodDelete, resourcePath(subnetID), nil, nil, nil,
-		vpc.RequestOptions{
-			ExpectedStatus: []int{http.StatusNoContent},
-			ReadBlocked:    blockedReader(client, subnetID),
-		},
+	return api.Request(ctx, client, http.MethodDelete, resourcePath(subnetID), nil, nil, nil,
+		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
 	)
 }
 
@@ -158,9 +150,8 @@ func List(
 		query url.Values,
 	) (vpc.Page[Subnet], error) {
 		var result listEnvelope
-		err := client.Request(
-			ctx, http.MethodGet, collectionPath, query, nil, &result,
-			vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		err := api.Request(ctx, client, http.MethodGet, collectionPath, query, nil, &result,
+			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 		)
 		return vpc.Page[Subnet]{
 			Items:    result.Subnets,
@@ -170,42 +161,37 @@ func List(
 }
 
 type Tags struct {
-	operations vpc.TagOperations
+	operations api.TagOperations
 }
 
 func TagOperations(client *vpc.Client, subnetID string) Tags {
-	return Tags{operations: vpc.NewTagOperations(
-		client, "subnets", subnetID, blockedReader(client, subnetID),
+	return Tags{operations: api.NewTagOperations(
+		client, "subnets", subnetID,
 	)}
 }
 
 func (tags Tags) Get(ctx context.Context) ([]string, error) {
 	return tags.operations.Get(ctx)
 }
+
 func (tags Tags) Has(ctx context.Context, tag string) (bool, error) {
 	return tags.operations.Has(ctx, tag)
 }
+
 func (tags Tags) Add(ctx context.Context, tag string) error {
 	return tags.operations.Add(ctx, tag)
 }
+
 func (tags Tags) Delete(ctx context.Context, tag string) error {
 	return tags.operations.Delete(ctx, tag)
 }
-func (tags Tags) Replace(ctx context.Context, values []string) error {
+
+func (tags Tags) Replace(ctx context.Context, values []string) ([]string, error) {
 	return tags.operations.Replace(ctx, values)
 }
+
 func (tags Tags) DeleteAll(ctx context.Context) error {
 	return tags.operations.DeleteAll(ctx)
-}
-
-func blockedReader(client *vpc.Client, subnetID string) func(context.Context) (bool, error) {
-	return func(ctx context.Context) (bool, error) {
-		subnet, err := Get(ctx, client, subnetID)
-		if err != nil {
-			return false, err
-		}
-		return subnet.Blocked, nil
-	}
 }
 
 func resourcePath(subnetID string) string {

@@ -2,7 +2,11 @@ package firewallpolicy
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"reflect"
+
+	"github.com/selectel/vpc-go/internal/api"
 
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
@@ -73,22 +77,36 @@ func InsertRule(
 	position InsertPosition,
 ) (*FirewallPolicy, error) {
 	request := insertRuleRequest{FirewallRuleID: firewallRuleID}
+	if position == nil || isNilPosition(position) {
+		return nil, &vpc.ClientError{Err: errors.New("firewall rule insert position is required")}
+	}
 	position.apply(&request)
+	if request.InsertBefore == "" && request.InsertAfter == "" {
+		if _, beginning := position.(beginningPosition); !beginning {
+			return nil, &vpc.ClientError{
+				Err: errors.New("neighboring firewall rule ID must not be empty"),
+			}
+		}
+	}
 
 	var result envelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPut,
 		resourcePath(firewallPolicyID)+"/insert_rule",
 		nil,
 		request,
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
 	}
 	return &result.FirewallPolicy, nil
+}
+
+func isNilPosition(position InsertPosition) bool {
+	value := reflect.ValueOf(position)
+	return value.Kind() == reflect.Pointer && value.IsNil()
 }
 
 // RemoveRule atomically removes firewallRuleID and returns the current policy.
@@ -99,14 +117,13 @@ func RemoveRule(
 	firewallRuleID string,
 ) (*FirewallPolicy, error) {
 	var result envelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPut,
 		resourcePath(firewallPolicyID)+"/remove_rule",
 		nil,
 		removeRuleRequest{FirewallRuleID: firewallRuleID},
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err

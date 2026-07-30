@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/selectel/vpc-go/internal/api"
+
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
@@ -81,11 +83,11 @@ type link struct {
 
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Router, error) {
 	var result envelope
-	err := client.Request(ctx, http.MethodPost, collectionPath, nil,
+	err := api.Request(ctx, client, http.MethodPost, collectionPath, nil,
 		struct {
 			Router CreateRequest `json:"router"`
 		}{request}, &result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusCreated}})
+		api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}})
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +96,8 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Ro
 
 func Get(ctx context.Context, client *vpc.Client, id string) (*Router, error) {
 	var result envelope
-	err := client.Request(ctx, http.MethodGet, resourcePath(id), nil, nil, &result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}})
+	err := api.Request(ctx, client, http.MethodGet, resourcePath(id), nil, nil, &result,
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}})
 	if err != nil {
 		return nil, err
 	}
@@ -104,11 +106,11 @@ func Get(ctx context.Context, client *vpc.Client, id string) (*Router, error) {
 
 func Update(ctx context.Context, client *vpc.Client, id string, request UpdateRequest) (*Router, error) {
 	var result envelope
-	err := client.Request(ctx, http.MethodPut, resourcePath(id), nil,
+	err := api.Request(ctx, client, http.MethodPut, resourcePath(id), nil,
 		struct {
 			Router UpdateRequest `json:"router"`
 		}{request}, &result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}, ReadBlocked: blockedReader(client, id)})
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}})
 	if err != nil {
 		return nil, err
 	}
@@ -116,23 +118,23 @@ func Update(ctx context.Context, client *vpc.Client, id string, request UpdateRe
 }
 
 func Delete(ctx context.Context, client *vpc.Client, id string) error {
-	return client.Request(ctx, http.MethodDelete, resourcePath(id), nil, nil, nil,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}, ReadBlocked: blockedReader(client, id)})
+	return api.Request(ctx, client, http.MethodDelete, resourcePath(id), nil, nil, nil,
+		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}})
 }
 
 func List(ctx context.Context, client *vpc.Client, options vpc.ListOptions) ([]Router, error) {
 	return vpc.WalkPages(ctx, options.Values(), func(ctx context.Context, query url.Values) (vpc.Page[Router], error) {
 		var result listEnvelope
-		err := client.Request(ctx, http.MethodGet, collectionPath, query, nil, &result,
-			vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}})
+		err := api.Request(ctx, client, http.MethodGet, collectionPath, query, nil, &result,
+			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}})
 		return vpc.Page[Router]{Items: result.Routers, NextLink: nextLink(result.Links)}, err
 	})
 }
 
-type Tags struct{ operations vpc.TagOperations }
+type Tags struct{ operations api.TagOperations }
 
 func TagOperations(client *vpc.Client, id string) Tags {
-	return Tags{vpc.NewTagOperations(client, "routers", id, blockedReader(client, id))}
+	return Tags{api.NewTagOperations(client, "routers", id)}
 }
 func (tags Tags) Get(ctx context.Context) ([]string, error) { return tags.operations.Get(ctx) }
 func (tags Tags) Has(ctx context.Context, tag string) (bool, error) {
@@ -142,20 +144,12 @@ func (tags Tags) Add(ctx context.Context, tag string) error { return tags.operat
 func (tags Tags) Delete(ctx context.Context, tag string) error {
 	return tags.operations.Delete(ctx, tag)
 }
-func (tags Tags) Replace(ctx context.Context, values []string) error {
+
+func (tags Tags) Replace(ctx context.Context, values []string) ([]string, error) {
 	return tags.operations.Replace(ctx, values)
 }
 func (tags Tags) DeleteAll(ctx context.Context) error { return tags.operations.DeleteAll(ctx) }
 
-func blockedReader(client *vpc.Client, id string) func(context.Context) (bool, error) {
-	return func(ctx context.Context) (bool, error) {
-		router, err := Get(ctx, client, id)
-		if err != nil {
-			return false, err
-		}
-		return router.Blocked, nil
-	}
-}
 func resourcePath(id string) string { return collectionPath + "/" + url.PathEscape(id) }
 func nextLink(links []link) string {
 	for _, link := range links {

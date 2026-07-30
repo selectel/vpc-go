@@ -85,6 +85,7 @@ func TestPagingFailureDoesNotReturnPartialItems(t *testing.T) {
 					NextLink: "?marker=partial",
 				}, nil
 			}
+
 			return Page[string]{}, connectionErr
 		},
 	)

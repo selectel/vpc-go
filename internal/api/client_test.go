@@ -1,4 +1,4 @@
-package v2
+package api
 
 import (
 	"context"
@@ -39,7 +39,7 @@ func TestClientRequestUsesConfiguredScope(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	response, err := client.Do(
+	response, err := client.do(
 		context.Background(),
 		http.MethodPost,
 		"/v2.0/networks",
@@ -89,7 +89,8 @@ func TestClientCancellationStopsSingleRequest(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	response, err := client.Do(ctx, http.MethodGet, "/v2.0/networks", nil, nil)
+	// A canceled transport must not produce a response body to close.
+	response, err := client.do(ctx, http.MethodGet, "/v2.0/networks", nil, nil)
 	if response != nil {
 		t.Fatal("Do() returned a response for a canceled request")
 	}

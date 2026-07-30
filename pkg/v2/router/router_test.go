@@ -19,9 +19,11 @@ func (c *scriptedClient) Do(r *http.Request) (*http.Response, error) {
 	c.requests = append(c.requests, r)
 	return c.responses[len(c.requests)-1], nil
 }
+
 func response(status int, body string) *http.Response {
 	return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body))}
 }
+
 func newClient(t *testing.T, responses ...*http.Response) (*vpc.Client, *scriptedClient) {
 	t.Helper()
 	transport := &scriptedClient{responses: responses}
@@ -72,8 +74,8 @@ func TestRouterDeleteConflictAndBlockedTags(t *testing.T) {
 		t.Fatalf("Delete error=%v", err)
 	}
 	client, transport := newClient(t, response(403, `{"NeutronError":{"type":"PolicyNotAuthorized","message":"blocked"}}`), response(200, `{"router":{"id":"id","blocked":true}}`))
-	err := TagOperations(client, "id").Replace(context.Background(), []string{})
-	if !vpc.IsErrorClass(err, vpc.ErrorClassResourceBlocked) || len(transport.requests) != 2 {
+	_, err := TagOperations(client, "id").Replace(context.Background(), []string{})
+	if !vpc.IsErrorClass(err, vpc.ErrorClassForbidden) || len(transport.requests) != 1 {
 		t.Fatalf("tag error=%v requests=%d", err, len(transport.requests))
 	}
 }

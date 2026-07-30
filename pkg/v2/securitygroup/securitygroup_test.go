@@ -102,8 +102,12 @@ func TestSecurityGroupListWalksAllPages(t *testing.T) {
 
 func TestSecurityGroupTagsUseHyphenatedPath(t *testing.T) {
 	client, transport := newClient(t, response(http.StatusOK, `{"tags":["one","two"]}`))
-	if err := TagOperations(client, "sg-id").Replace(context.Background(), []string{"one", "two"}); err != nil {
+	tags, err := TagOperations(client, "sg-id").Replace(context.Background(), []string{"one", "two"})
+	if err != nil {
 		t.Fatal(err)
+	}
+	if len(tags) != 2 || tags[0] != "one" || tags[1] != "two" {
+		t.Fatalf("Replace()=%v", tags)
 	}
 	if len(transport.requests) != 1 ||
 		transport.requests[0].Method != http.MethodPut ||

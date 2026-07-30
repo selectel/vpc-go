@@ -39,6 +39,7 @@ func (optional Optional[T]) MarshalJSON() ([]byte, error) {
 	if optional.null {
 		return []byte("null"), nil
 	}
+
 	return json.Marshal(optional.value)
 }
 
@@ -48,6 +49,7 @@ func (optional *Optional[T]) UnmarshalJSON(data []byte) error {
 		var zero T
 		optional.value = zero
 		optional.null = true
+
 		return nil
 	}
 
@@ -55,5 +57,6 @@ func (optional *Optional[T]) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	optional.null = false
+
 	return nil
 }

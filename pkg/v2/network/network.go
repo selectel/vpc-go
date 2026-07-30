@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/selectel/vpc-go/internal/api"
+
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
@@ -38,6 +40,7 @@ type Network struct {
 	Blocked               bool     `json:"blocked"`
 	IsPublic              bool     `json:"is_public"`
 	IsDNSEnabled          bool     `json:"is_dns_enabled"`
+	DNSDomain             string   `json:"dns_domain"`
 }
 
 // CreateRequest contains caller-writable network attributes.
@@ -47,6 +50,7 @@ type CreateRequest struct {
 	AdminStateUp          *bool     `json:"admin_state_up,omitempty"`
 	AvailabilityZoneHints *[]string `json:"availability_zone_hints,omitempty"`
 	ProjectID             *string   `json:"project_id,omitempty"`
+	DNSDomain             *string   `json:"dns_domain,omitempty"`
 }
 
 // UpdateRequest contains caller-writable network attributes.
@@ -54,6 +58,7 @@ type UpdateRequest struct {
 	Name         *string `json:"name,omitempty"`
 	Description  *string `json:"description,omitempty"`
 	AdminStateUp *bool   `json:"admin_state_up,omitempty"`
+	DNSDomain    *string `json:"dns_domain,omitempty"`
 }
 
 type networkEnvelope struct {
@@ -73,8 +78,7 @@ type link struct {
 // Create creates one network with one HTTP request.
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Network, error) {
 	var envelope networkEnvelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPost,
 		collectionPath,
 		nil,
@@ -82,7 +86,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Ne
 			Network CreateRequest `json:"network"`
 		}{Network: request},
 		&envelope,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
 	)
 	if err != nil {
 		return nil, err
@@ -93,14 +97,13 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Ne
 // Get reads one network.
 func Get(ctx context.Context, client *vpc.Client, networkID string) (*Network, error) {
 	var envelope networkEnvelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodGet,
 		resourcePath(networkID),
 		nil,
 		nil,
 		&envelope,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -116,8 +119,7 @@ func Update(
 	request UpdateRequest,
 ) (*Network, error) {
 	var envelope networkEnvelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPut,
 		resourcePath(networkID),
 		nil,
@@ -125,10 +127,7 @@ func Update(
 			Network UpdateRequest `json:"network"`
 		}{Network: request},
 		&envelope,
-		vpc.RequestOptions{
-			ExpectedStatus: []int{http.StatusOK},
-			ReadBlocked:    blockedReader(client, networkID),
-		},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -138,17 +137,13 @@ func Update(
 
 // Delete deletes one network without deleting its ports.
 func Delete(ctx context.Context, client *vpc.Client, networkID string) error {
-	return client.Request(
-		ctx,
+	return api.Request(ctx, client,
 		http.MethodDelete,
 		resourcePath(networkID),
 		nil,
 		nil,
 		nil,
-		vpc.RequestOptions{
-			ExpectedStatus: []int{http.StatusNoContent},
-			ReadBlocked:    blockedReader(client, networkID),
-		},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
 	)
 }
 
@@ -163,14 +158,13 @@ func List(
 		query url.Values,
 	) (vpc.Page[Network], error) {
 		var envelope listEnvelope
-		err := client.Request(
-			ctx,
+		err := api.Request(ctx, client,
 			http.MethodGet,
 			collectionPath,
 			query,
 			nil,
 			&envelope,
-			vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 		)
 		return vpc.Page[Network]{
 			Items:    envelope.Networks,
@@ -181,16 +175,15 @@ func List(
 
 // Tags provides typed tag operations for one network.
 type Tags struct {
-	operations vpc.TagOperations
+	operations api.TagOperations
 }
 
 // TagOperations returns tag operations bound to networkID.
 func TagOperations(client *vpc.Client, networkID string) Tags {
-	return Tags{operations: vpc.NewTagOperations(
+	return Tags{operations: api.NewTagOperations(
 		client,
 		"networks",
 		networkID,
-		blockedReader(client, networkID),
 	)}
 }
 
@@ -210,22 +203,12 @@ func (tags Tags) Delete(ctx context.Context, tag string) error {
 	return tags.operations.Delete(ctx, tag)
 }
 
-func (tags Tags) Replace(ctx context.Context, values []string) error {
+func (tags Tags) Replace(ctx context.Context, values []string) ([]string, error) {
 	return tags.operations.Replace(ctx, values)
 }
 
 func (tags Tags) DeleteAll(ctx context.Context) error {
 	return tags.operations.DeleteAll(ctx)
-}
-
-func blockedReader(client *vpc.Client, networkID string) func(context.Context) (bool, error) {
-	return func(ctx context.Context) (bool, error) {
-		network, err := Get(ctx, client, networkID)
-		if err != nil {
-			return false, err
-		}
-		return network.Blocked, nil
-	}
 }
 
 func resourcePath(networkID string) string {

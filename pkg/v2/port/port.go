@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/selectel/vpc-go/internal/api"
+
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
@@ -18,12 +20,6 @@ type FixedIP struct {
 type AllowedAddressPair struct {
 	IPAddress  string `json:"ip_address"`
 	MACAddress string `json:"mac_address,omitempty"`
-}
-
-type ExtraDHCPOption struct {
-	Name      string `json:"opt_name"`
-	Value     string `json:"opt_value"`
-	IPVersion *int   `json:"ip_version,omitempty"`
 }
 
 type DNSAssignment struct {
@@ -45,7 +41,6 @@ type Port struct {
 	DeviceOwner         string               `json:"device_owner"`
 	SecurityGroups      []string             `json:"security_groups"`
 	AllowedAddressPairs []AllowedAddressPair `json:"allowed_address_pairs"`
-	ExtraDHCPOptions    []ExtraDHCPOption    `json:"extra_dhcp_opts"`
 	PortSecurityEnabled bool                 `json:"port_security_enabled"`
 	QoSPolicyID         *string              `json:"qos_policy_id"`
 	BindingVNICType     string               `json:"binding:vnic_type"`
@@ -72,9 +67,9 @@ type CreateRequest struct {
 	DeviceOwner         *string               `json:"device_owner,omitempty"`
 	SecurityGroups      *[]string             `json:"security_groups,omitempty"`
 	AllowedAddressPairs *[]AllowedAddressPair `json:"allowed_address_pairs,omitempty"`
-	ExtraDHCPOptions    *[]ExtraDHCPOption    `json:"extra_dhcp_opts,omitempty"`
 	ProjectID           *string               `json:"project_id,omitempty"`
 	DNSName             *string               `json:"dns_name,omitempty"`
+	DNSDomain           *string               `json:"dns_domain,omitempty"`
 }
 
 type UpdateRequest struct {
@@ -86,8 +81,8 @@ type UpdateRequest struct {
 	DeviceOwner         *string               `json:"device_owner,omitempty"`
 	SecurityGroups      *[]string             `json:"security_groups,omitempty"`
 	AllowedAddressPairs *[]AllowedAddressPair `json:"allowed_address_pairs,omitempty"`
-	ExtraDHCPOptions    *[]ExtraDHCPOption    `json:"extra_dhcp_opts,omitempty"`
 	DNSName             *string               `json:"dns_name,omitempty"`
+	DNSDomain           *string               `json:"dns_domain,omitempty"`
 }
 
 type envelope struct {
@@ -105,12 +100,11 @@ type link struct {
 
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Port, error) {
 	var result envelope
-	err := client.Request(
-		ctx, http.MethodPost, collectionPath, nil,
+	err := api.Request(ctx, client, http.MethodPost, collectionPath, nil,
 		struct {
 			Port CreateRequest `json:"port"`
 		}{Port: request},
-		&result, vpc.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		&result, api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
 	)
 	if err != nil {
 		return nil, err
@@ -120,9 +114,8 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Po
 
 func Get(ctx context.Context, client *vpc.Client, id string) (*Port, error) {
 	var result envelope
-	err := client.Request(
-		ctx, http.MethodGet, resourcePath(id), nil, nil, &result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+	err := api.Request(ctx, client, http.MethodGet, resourcePath(id), nil, nil, &result,
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -132,15 +125,11 @@ func Get(ctx context.Context, client *vpc.Client, id string) (*Port, error) {
 
 func Update(ctx context.Context, client *vpc.Client, id string, request UpdateRequest) (*Port, error) {
 	var result envelope
-	err := client.Request(
-		ctx, http.MethodPut, resourcePath(id), nil,
+	err := api.Request(ctx, client, http.MethodPut, resourcePath(id), nil,
 		struct {
 			Port UpdateRequest `json:"port"`
 		}{Port: request},
-		&result, vpc.RequestOptions{
-			ExpectedStatus: []int{http.StatusOK},
-			ReadBlocked:    blockedReader(client, id),
-		},
+		&result, api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -149,12 +138,8 @@ func Update(ctx context.Context, client *vpc.Client, id string, request UpdateRe
 }
 
 func Delete(ctx context.Context, client *vpc.Client, id string) error {
-	return client.Request(
-		ctx, http.MethodDelete, resourcePath(id), nil, nil, nil,
-		vpc.RequestOptions{
-			ExpectedStatus: []int{http.StatusNoContent},
-			ReadBlocked:    blockedReader(client, id),
-		},
+	return api.Request(ctx, client, http.MethodDelete, resourcePath(id), nil, nil, nil,
+		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
 	)
 }
 
@@ -163,18 +148,17 @@ func List(ctx context.Context, client *vpc.Client, options vpc.ListOptions) ([]P
 		ctx context.Context, query url.Values,
 	) (vpc.Page[Port], error) {
 		var result listEnvelope
-		err := client.Request(
-			ctx, http.MethodGet, collectionPath, query, nil, &result,
-			vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		err := api.Request(ctx, client, http.MethodGet, collectionPath, query, nil, &result,
+			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 		)
 		return vpc.Page[Port]{Items: result.Ports, NextLink: nextLink(result.Links)}, err
 	})
 }
 
-type Tags struct{ operations vpc.TagOperations }
+type Tags struct{ operations api.TagOperations }
 
 func TagOperations(client *vpc.Client, id string) Tags {
-	return Tags{vpc.NewTagOperations(client, "ports", id, blockedReader(client, id))}
+	return Tags{api.NewTagOperations(client, "ports", id)}
 }
 func (tags Tags) Get(ctx context.Context) ([]string, error) { return tags.operations.Get(ctx) }
 func (tags Tags) Has(ctx context.Context, tag string) (bool, error) {
@@ -184,20 +168,12 @@ func (tags Tags) Add(ctx context.Context, tag string) error { return tags.operat
 func (tags Tags) Delete(ctx context.Context, tag string) error {
 	return tags.operations.Delete(ctx, tag)
 }
-func (tags Tags) Replace(ctx context.Context, values []string) error {
+
+func (tags Tags) Replace(ctx context.Context, values []string) ([]string, error) {
 	return tags.operations.Replace(ctx, values)
 }
 func (tags Tags) DeleteAll(ctx context.Context) error { return tags.operations.DeleteAll(ctx) }
 
-func blockedReader(client *vpc.Client, id string) func(context.Context) (bool, error) {
-	return func(ctx context.Context) (bool, error) {
-		port, err := Get(ctx, client, id)
-		if err != nil {
-			return false, err
-		}
-		return port.Blocked, nil
-	}
-}
 func resourcePath(id string) string { return collectionPath + "/" + url.PathEscape(id) }
 func nextLink(links []link) string {
 	for _, link := range links {

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/selectel/vpc-go/internal/api"
+
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
@@ -100,8 +102,7 @@ func CreateRule(
 	request RuleCreateRequest,
 ) (*SecurityGroupRule, error) {
 	var result ruleEnvelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodPost,
 		ruleCollectionPath,
 		nil,
@@ -109,7 +110,7 @@ func CreateRule(
 			SecurityGroupRule ruleCreatePayload `json:"security_group_rule"`
 		}{SecurityGroupRule: request.payload()},
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
 	)
 	if err != nil {
 		return nil, err
@@ -123,14 +124,13 @@ func GetRule(
 	securityGroupRuleID string,
 ) (*SecurityGroupRule, error) {
 	var result ruleEnvelope
-	err := client.Request(
-		ctx,
+	err := api.Request(ctx, client,
 		http.MethodGet,
 		ruleResourcePath(securityGroupRuleID),
 		nil,
 		nil,
 		&result,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 	)
 	if err != nil {
 		return nil, err
@@ -143,14 +143,13 @@ func DeleteRule(
 	client *vpc.Client,
 	securityGroupRuleID string,
 ) error {
-	return client.Request(
-		ctx,
+	return api.Request(ctx, client,
 		http.MethodDelete,
 		ruleResourcePath(securityGroupRuleID),
 		nil,
 		nil,
 		nil,
-		vpc.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
+		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
 	)
 }
 
@@ -164,14 +163,13 @@ func ListRules(
 		query url.Values,
 	) (vpc.Page[SecurityGroupRule], error) {
 		var result ruleListEnvelope
-		err := client.Request(
-			ctx,
+		err := api.Request(ctx, client,
 			http.MethodGet,
 			ruleCollectionPath,
 			query,
 			nil,
 			&result,
-			vpc.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 		)
 		return vpc.Page[SecurityGroupRule]{
 			Items:    result.SecurityGroupRules,

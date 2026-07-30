@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -51,6 +52,21 @@ func TestRouterInterfaceErrorClasses(t *testing.T) {
 		if !vpc.IsErrorClass(err, test.class) || len(transport.requests) != 1 {
 			t.Fatalf("%s error=%v requests=%d", test.kind, err, len(transport.requests))
 		}
+	}
+}
+
+func TestRouterInterfaceRejectsInvalidSelectorWithoutHTTP(t *testing.T) {
+	client, transport := newClient(t)
+	var typedNil *subnetSelector
+	for _, selector := range []InterfaceSelector{nil, typedNil, BySubnet(""), ByPort("")} {
+		_, err := AddInterface(context.Background(), client, "router", selector)
+		var clientErr *vpc.ClientError
+		if !errors.As(err, &clientErr) {
+			t.Fatalf("selector %#v error=%v, want ClientError", selector, err)
+		}
+	}
+	if len(transport.requests) != 0 {
+		t.Fatalf("requests=%d, want 0", len(transport.requests))
 	}
 }
 

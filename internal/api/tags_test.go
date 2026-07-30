@@ -1,4 +1,4 @@
-package v2
+package api
 
 import (
 	"context"
@@ -33,7 +33,7 @@ func TestTagsPathsAndMethods(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
 	}
-	operations := NewTagOperations(client, "security-groups", "resource-id", nil)
+	operations := NewTagOperations(client, "security-groups", "resource-id")
 
 	if _, err := operations.Get(context.Background()); err != nil {
 		t.Fatalf("Get() error = %v", err)
@@ -47,8 +47,12 @@ func TestTagsPathsAndMethods(t *testing.T) {
 	if err := operations.Delete(context.Background(), "one/tag"); err != nil {
 		t.Fatalf("Delete() error = %v", err)
 	}
-	if err := operations.Replace(context.Background(), []string{"two"}); err != nil {
+	replaced, err := operations.Replace(context.Background(), []string{"two"})
+	if err != nil {
 		t.Fatalf("Replace() error = %v", err)
+	}
+	if len(replaced) != 1 || replaced[0] != "two" {
+		t.Fatalf("Replace() = %v, want [two]", replaced)
 	}
 	if err := operations.DeleteAll(context.Background()); err != nil {
 		t.Fatalf("DeleteAll() error = %v", err)
@@ -98,17 +102,20 @@ func TestTagsReplaceUsesOneRequestWithoutRead(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	err = NewTagOperations(client, "networks", "id", nil).
+	replaced, err := NewTagOperations(client, "networks", "id").
 		Replace(context.Background(), []string{})
 	if err != nil {
 		t.Fatalf("Replace() error = %v", err)
+	}
+	if replaced == nil || len(replaced) != 0 {
+		t.Fatalf("Replace() = %#v, want non-nil empty slice", replaced)
 	}
 	if len(httpClient.requests) != 1 || httpClient.requests[0].Method != http.MethodPut {
 		t.Fatalf("requests = %+v, want one PUT", httpClient.requests)
 	}
 }
 
-func TestTagsBlockedClassUsesParentDiagnostic(t *testing.T) {
+func TestTagsForbiddenUsesOneRequest(t *testing.T) {
 	httpClient := &recordingHTTPClient{
 		do: func(*http.Request) (*http.Response, error) {
 			return &http.Response{
@@ -128,21 +135,12 @@ func TestTagsBlockedClassUsesParentDiagnostic(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	diagnostics := 0
-	operations := NewTagOperations(
-		client,
-		"ports",
-		"id",
-		func(context.Context) (bool, error) {
-			diagnostics++
-			return true, nil
-		},
-	)
+	operations := NewTagOperations(client, "ports", "id")
 	err = operations.Add(context.Background(), "tag")
-	if !IsErrorClass(err, ErrorClassResourceBlocked) {
-		t.Fatalf("Add() error = %v, want blocked class", err)
+	if !IsErrorClass(err, ErrorClassForbidden) {
+		t.Fatalf("Add() error = %v, want forbidden class", err)
 	}
-	if diagnostics != 1 {
-		t.Fatalf("diagnostic count = %d, want 1", diagnostics)
+	if len(httpClient.requests) != 1 {
+		t.Fatalf("request count = %d, want 1", len(httpClient.requests))
 	}
 }
