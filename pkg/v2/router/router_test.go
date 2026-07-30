@@ -35,11 +35,21 @@ func newClient(t *testing.T, responses ...*http.Response) (*vpc.Client, *scripte
 }
 
 func TestRouterCRUDFieldsListTags(t *testing.T) {
-	model := `{"router":{"id":"id","status":"BUILD","blocked":true,"external_gateway_info":{"network_id":"ext","enable_snat":true,"external_fixed_ips":[{"subnet_id":"sub","ip_address":"192.0.2.1"}]}}}`
+	model := `{"router":{"id":"id","status":"BUILD","blocked":true,"flavor_id":"flavor",` +
+		`"external_gateway_info":{"network_id":"ext","enable_snat":true,` +
+		`"external_fixed_ips":[{"subnet_id":"sub","ip_address":"192.0.2.1"}]}}}`
 	client, transport := newClient(t, response(201, model), response(200, model), response(200, model), response(204, ""), response(200, `{"routers":[{"id":"id"}],"routers_links":[]}`), response(200, `{"tags":[]}`))
 	enable := true
-	if _, err := Create(context.Background(), client, CreateRequest{ExternalGateway: vpc.Value(ExternalGatewayRequest{NetworkID: "ext", EnableSNAT: &enable})}); err != nil {
+	flavorID := "flavor"
+	created, err := Create(context.Background(), client, CreateRequest{
+		ExternalGateway: vpc.Value(ExternalGatewayRequest{NetworkID: "ext", EnableSNAT: &enable}),
+		FlavorID:        &flavorID,
+	})
+	if err != nil {
 		t.Fatal(err)
+	}
+	if created.FlavorID == nil || *created.FlavorID != flavorID {
+		t.Fatalf("created router = %+v", created)
 	}
 	if _, err := Get(context.Background(), client, "id"); err != nil {
 		t.Fatal(err)
@@ -62,6 +72,9 @@ func TestRouterCRUDFieldsListTags(t *testing.T) {
 		if strings.Contains(string(createBody), forbidden) {
 			t.Fatalf("create body contains %s: %s", forbidden, createBody)
 		}
+	}
+	if !strings.Contains(string(createBody), `"flavor_id":"flavor"`) {
+		t.Fatalf("create body=%s", createBody)
 	}
 	if !strings.Contains(string(updateBody), `"external_gateway_info":null`) {
 		t.Fatalf("update body=%s", updateBody)

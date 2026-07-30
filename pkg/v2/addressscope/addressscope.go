@@ -26,7 +26,7 @@ type AddressScope struct {
 
 type CreateRequest struct {
 	Name      *string `json:"name,omitempty"`
-	IPVersion *int    `json:"ip_version,omitempty"`
+	IPVersion int     `json:"ip_version"`
 	ProjectID *string `json:"project_id,omitempty"`
 }
 

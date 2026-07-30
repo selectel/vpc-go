@@ -22,6 +22,12 @@ type AllowedAddressPair struct {
 	MACAddress string `json:"mac_address,omitempty"`
 }
 
+type ExtraDHCPOption struct {
+	Name      string `json:"opt_name"`
+	Value     string `json:"opt_value"`
+	IPVersion *int   `json:"ip_version,omitempty"`
+}
+
 type DNSAssignment struct {
 	IPAddress string `json:"ip_address"`
 	Hostname  string `json:"hostname"`
@@ -41,6 +47,7 @@ type Port struct {
 	DeviceOwner         string               `json:"device_owner"`
 	SecurityGroups      []string             `json:"security_groups"`
 	AllowedAddressPairs []AllowedAddressPair `json:"allowed_address_pairs"`
+	ExtraDHCPOptions    []ExtraDHCPOption    `json:"extra_dhcp_opts"`
 	PortSecurityEnabled bool                 `json:"port_security_enabled"`
 	QoSPolicyID         *string              `json:"qos_policy_id"`
 	BindingVNICType     string               `json:"binding:vnic_type"`
@@ -67,6 +74,8 @@ type CreateRequest struct {
 	DeviceOwner         *string               `json:"device_owner,omitempty"`
 	SecurityGroups      *[]string             `json:"security_groups,omitempty"`
 	AllowedAddressPairs *[]AllowedAddressPair `json:"allowed_address_pairs,omitempty"`
+	ExtraDHCPOptions    *[]ExtraDHCPOption    `json:"extra_dhcp_opts,omitempty"`
+	BindingVNICType     *string               `json:"binding:vnic_type,omitempty"`
 	ProjectID           *string               `json:"project_id,omitempty"`
 	DNSName             *string               `json:"dns_name,omitempty"`
 	DNSDomain           *string               `json:"dns_domain,omitempty"`
@@ -81,6 +90,8 @@ type UpdateRequest struct {
 	DeviceOwner         *string               `json:"device_owner,omitempty"`
 	SecurityGroups      *[]string             `json:"security_groups,omitempty"`
 	AllowedAddressPairs *[]AllowedAddressPair `json:"allowed_address_pairs,omitempty"`
+	ExtraDHCPOptions    *[]ExtraDHCPOption    `json:"extra_dhcp_opts,omitempty"`
+	BindingVNICType     *string               `json:"binding:vnic_type,omitempty"`
 	DNSName             *string               `json:"dns_name,omitempty"`
 	DNSDomain           *string               `json:"dns_domain,omitempty"`
 }

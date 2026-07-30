@@ -46,7 +46,7 @@ func TestAddressScopeCRUDListAndFields(t *testing.T) {
 	)
 	name, version := "scope", 4
 	if _, err := Create(context.Background(), client, CreateRequest{
-		Name: &name, IPVersion: &version,
+		Name: &name, IPVersion: version,
 	}); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}

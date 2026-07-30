@@ -58,6 +58,7 @@ type CreateRequest struct {
 	AdminStateUp          *bool                                 `json:"admin_state_up,omitempty"`
 	ExternalGateway       *vpc.Optional[ExternalGatewayRequest] `json:"external_gateway_info,omitempty"`
 	AvailabilityZoneHints *[]string                             `json:"availability_zone_hints,omitempty"`
+	FlavorID              *string                               `json:"flavor_id,omitempty"`
 	ProjectID             *string                               `json:"project_id,omitempty"`
 }
 

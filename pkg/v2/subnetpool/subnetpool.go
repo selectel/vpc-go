@@ -33,15 +33,15 @@ type SubnetPool struct {
 }
 
 type CreateRequest struct {
-	Name             *string   `json:"name,omitempty"`
-	Description      *string   `json:"description,omitempty"`
-	Prefixes         *[]string `json:"prefixes,omitempty"`
-	DefaultQuota     *int      `json:"default_quota,omitempty"`
-	DefaultPrefixLen *int      `json:"default_prefixlen,omitempty"`
-	MinPrefixLen     *int      `json:"min_prefixlen,omitempty"`
-	MaxPrefixLen     *int      `json:"max_prefixlen,omitempty"`
-	AddressScopeID   *string   `json:"address_scope_id,omitempty"`
-	ProjectID        *string   `json:"project_id,omitempty"`
+	Name             *string  `json:"name,omitempty"`
+	Description      *string  `json:"description,omitempty"`
+	Prefixes         []string `json:"prefixes"`
+	DefaultQuota     *int     `json:"default_quota,omitempty"`
+	DefaultPrefixLen *int     `json:"default_prefixlen,omitempty"`
+	MinPrefixLen     *int     `json:"min_prefixlen,omitempty"`
+	MaxPrefixLen     *int     `json:"max_prefixlen,omitempty"`
+	AddressScopeID   *string  `json:"address_scope_id,omitempty"`
+	ProjectID        *string  `json:"project_id,omitempty"`
 }
 
 type UpdateRequest struct {
@@ -138,7 +138,6 @@ func List(
 	})
 }
 
-// Tags intentionally exposes read-only tag operations for a subnet pool.
 type Tags struct {
 	operations api.TagOperations
 }
@@ -153,6 +152,22 @@ func (tags Tags) Get(ctx context.Context) ([]string, error) {
 
 func (tags Tags) Has(ctx context.Context, tag string) (bool, error) {
 	return tags.operations.Has(ctx, tag)
+}
+
+func (tags Tags) Add(ctx context.Context, tag string) error {
+	return tags.operations.Add(ctx, tag)
+}
+
+func (tags Tags) Delete(ctx context.Context, tag string) error {
+	return tags.operations.Delete(ctx, tag)
+}
+
+func (tags Tags) Replace(ctx context.Context, values []string) ([]string, error) {
+	return tags.operations.Replace(ctx, values)
+}
+
+func (tags Tags) DeleteAll(ctx context.Context) error {
+	return tags.operations.DeleteAll(ctx)
 }
 
 func resourcePath(id string) string {

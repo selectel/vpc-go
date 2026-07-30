@@ -12,10 +12,13 @@ import (
 	"testing"
 
 	vpc "github.com/selectel/vpc-go/pkg/v2"
+	"github.com/selectel/vpc-go/pkg/v2/addressscope"
 	"github.com/selectel/vpc-go/pkg/v2/firewallrule"
 	"github.com/selectel/vpc-go/pkg/v2/floatingip"
 	"github.com/selectel/vpc-go/pkg/v2/network"
 	"github.com/selectel/vpc-go/pkg/v2/port"
+	"github.com/selectel/vpc-go/pkg/v2/router"
+	"github.com/selectel/vpc-go/pkg/v2/subnet"
 	"github.com/selectel/vpc-go/pkg/v2/subnetpool"
 )
 
@@ -29,12 +32,20 @@ func TestContractNetworkAndPortAttributeMatrix(t *testing.T) {
 	assertFields(t, network.UpdateRequest{}, []string{"DNSDomain"},
 		[]string{"Shared", "RouterExternal", "Segments"})
 
-	assertFields(t, port.Port{}, []string{"DNSName", "DNSDomain", "DNSAssignment"},
-		[]string{"ExtraDHCPOptions"})
-	assertFields(t, port.CreateRequest{}, []string{"DNSName", "DNSDomain"},
-		[]string{"ExtraDHCPOptions"})
-	assertFields(t, port.UpdateRequest{}, []string{"DNSName", "DNSDomain"},
-		[]string{"ExtraDHCPOptions"})
+	assertFields(t, port.Port{},
+		[]string{"DNSName", "DNSDomain", "DNSAssignment", "ExtraDHCPOptions", "BindingVNICType"}, nil)
+	assertFields(t, port.CreateRequest{},
+		[]string{"DNSName", "DNSDomain", "ExtraDHCPOptions", "BindingVNICType"}, nil)
+	assertFields(t, port.UpdateRequest{},
+		[]string{"DNSName", "DNSDomain", "ExtraDHCPOptions", "BindingVNICType"}, nil)
+
+	assertFields(t, subnet.Subnet{}, []string{"DNSPublishFixedIP"}, []string{"SegmentID"})
+	assertFields(t, subnet.CreateRequest{}, []string{"DNSPublishFixedIP"}, []string{"SegmentID"})
+	assertFields(t, subnet.UpdateRequest{}, []string{"DNSPublishFixedIP"}, []string{"SegmentID"})
+
+	assertFields(t, router.Router{}, []string{"FlavorID"}, nil)
+	assertFields(t, router.CreateRequest{}, []string{"FlavorID"}, nil)
+	assertFields(t, router.UpdateRequest{}, nil, []string{"FlavorID"})
 }
 
 // Sources:
@@ -52,6 +63,13 @@ func TestContractFloatingIPAndSubnetPoolAttributeMatrix(t *testing.T) {
 	assertFieldType(t, floatingip.UpdateRequest{}, "PortID", optionalType)
 	assertFieldType(t, floatingip.UpdateRequest{}, "FixedIPAddress", optionalType)
 	assertFieldType(t, subnetpool.UpdateRequest{}, "AddressScopeID", optionalType)
+}
+
+func TestContractRequiredCreateFields(t *testing.T) {
+	assertRequiredJSONField(t, addressscope.CreateRequest{}, "IPVersion", "ip_version")
+	assertRequiredJSONField(t, subnet.CreateRequest{}, "NetworkID", "network_id")
+	assertRequiredJSONField(t, subnet.CreateRequest{}, "IPVersion", "ip_version")
+	assertRequiredJSONField(t, subnetpool.CreateRequest{}, "Prefixes", "prefixes")
 }
 
 // Source: neutron_fwaas/services/firewall/service_drivers/driver_api.py and
@@ -123,5 +141,26 @@ func assertFieldType(t *testing.T, value any, name string, expected reflect.Type
 	}
 	if field.Type != expected {
 		t.Errorf("%T.%s type = %s, want %s", value, name, field.Type, expected)
+	}
+}
+
+func assertRequiredJSONField(t *testing.T, value any, name, jsonName string) {
+	t.Helper()
+	field, exists := reflect.TypeOf(value).FieldByName(name)
+	if !exists {
+		t.Fatalf("%T lacks %s", value, name)
+	}
+	if field.Type.Kind() == reflect.Pointer {
+		t.Errorf("%T.%s is a pointer", value, name)
+	}
+	tag := field.Tag.Get("json")
+	parts := strings.Split(tag, ",")
+	if parts[0] != jsonName {
+		t.Errorf("%T.%s JSON name = %q, want %q", value, name, parts[0], jsonName)
+	}
+	for _, option := range parts[1:] {
+		if option == "omitempty" {
+			t.Errorf("%T.%s uses omitempty", value, name)
+		}
 	}
 }

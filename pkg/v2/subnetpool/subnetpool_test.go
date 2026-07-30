@@ -43,7 +43,7 @@ func TestSubnetPoolCRUDAndPrefixReplacement(t *testing.T) {
 		t, response(201, model), response(200, model), response(200, model), response(204, ""),
 	)
 	prefixes := []string{"192.0.2.0/24"}
-	if _, err := Create(context.Background(), client, CreateRequest{Prefixes: &prefixes}); err != nil {
+	if _, err := Create(context.Background(), client, CreateRequest{Prefixes: prefixes}); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
 	if _, err := Get(context.Background(), client, "id"); err != nil {
@@ -88,11 +88,15 @@ func TestSubnetPoolListIncludesServiceResponse(t *testing.T) {
 	}
 }
 
-func TestSubnetPoolConflictAndReadOnlyTags(t *testing.T) {
-	client, _ := newClient(
+func TestSubnetPoolConflictAndTags(t *testing.T) {
+	client, transport := newClient(
 		t,
 		response(409, `{"NeutronError":{"type":"SubnetPoolInUse","message":"in use"}}`),
 		response(200, `{"tags":["one"]}`),
+		response(204, ""),
+		response(201, ""),
+		response(204, ""),
+		response(200, `{"tags":["two"]}`),
 		response(204, ""),
 	)
 	err := Delete(context.Background(), client, "id")
@@ -107,5 +111,41 @@ func TestSubnetPoolConflictAndReadOnlyTags(t *testing.T) {
 	present, err := tags.Has(context.Background(), "one")
 	if err != nil || !present {
 		t.Fatalf("tags.Has() = %v, %v", present, err)
+	}
+	if err := tags.Add(context.Background(), "two"); err != nil {
+		t.Fatalf("tags.Add() error = %v", err)
+	}
+	if err := tags.Delete(context.Background(), "one"); err != nil {
+		t.Fatalf("tags.Delete() error = %v", err)
+	}
+	values, err = tags.Replace(context.Background(), []string{"two"})
+	if err != nil || len(values) != 1 || values[0] != "two" {
+		t.Fatalf("tags.Replace() = %+v, %v", values, err)
+	}
+	if err := tags.DeleteAll(context.Background()); err != nil {
+		t.Fatalf("tags.DeleteAll() error = %v", err)
+	}
+
+	wantRequests := []struct {
+		method string
+		path   string
+	}{
+		{http.MethodDelete, "/v2.0/subnetpools/id"},
+		{http.MethodGet, "/v2.0/subnetpools/id/tags"},
+		{http.MethodGet, "/v2.0/subnetpools/id/tags/one"},
+		{http.MethodPut, "/v2.0/subnetpools/id/tags/two"},
+		{http.MethodDelete, "/v2.0/subnetpools/id/tags/one"},
+		{http.MethodPut, "/v2.0/subnetpools/id/tags"},
+		{http.MethodDelete, "/v2.0/subnetpools/id/tags"},
+	}
+	if len(transport.requests) != len(wantRequests) {
+		t.Fatalf("got %d requests, want %d", len(transport.requests), len(wantRequests))
+	}
+	for index, want := range wantRequests {
+		got := transport.requests[index]
+		if got.Method != want.method || got.URL.Path != want.path {
+			t.Errorf("request %d = %s %s, want %s %s",
+				index, got.Method, got.URL.Path, want.method, want.path)
+		}
 	}
 }
