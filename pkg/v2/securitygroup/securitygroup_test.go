@@ -85,6 +85,64 @@ func TestSecurityGroupCRUDAndFields(t *testing.T) {
 	}
 }
 
+func TestSecurityGroupStatefulRoundTrips(t *testing.T) {
+	model := `{"security_group":{"id":"sg-id","name":"web","stateful":false,"shared":true}}`
+	client, transport := newClient(
+		t,
+		response(http.StatusCreated, model),
+		response(http.StatusOK, model),
+	)
+	stateful := false
+	group, err := Create(context.Background(), client, CreateRequest{Stateful: &stateful})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if group.Stateful {
+		t.Fatalf("Stateful=%t, want false", group.Stateful)
+	}
+	if !group.Shared {
+		t.Fatalf("Shared=%t, want true", group.Shared)
+	}
+	if _, err = Update(context.Background(), client, "sg-id", UpdateRequest{Stateful: &stateful}); err != nil {
+		t.Fatal(err)
+	}
+	createBody, _ := io.ReadAll(transport.requests[0].Body)
+	updateBody, _ := io.ReadAll(transport.requests[1].Body)
+	for _, body := range []string{string(createBody), string(updateBody)} {
+		if !strings.Contains(body, `"stateful":false`) {
+			t.Fatalf("body=%s, want an explicit stateful=false", body)
+		}
+		// shared is read-only on the API; sending it would be rejected.
+		if strings.Contains(body, "shared") {
+			t.Fatalf("body=%s must not contain shared", body)
+		}
+	}
+}
+
+func TestSecurityGroupOmittedStatefulKeepsAPIDefault(t *testing.T) {
+	client, transport := newClient(
+		t,
+		response(http.StatusCreated, `{"security_group":{"id":"sg-id","stateful":true}}`),
+	)
+	if _, err := Create(context.Background(), client, CreateRequest{}); err != nil {
+		t.Fatal(err)
+	}
+	createBody, _ := io.ReadAll(transport.requests[0].Body)
+	// An omitted pointer must not serialise as false, which would silently make
+	// every group stateless.
+	if strings.Contains(string(createBody), "stateful") {
+		t.Fatalf("create body=%s must omit stateful entirely", createBody)
+	}
+}
+
+func TestSecurityGroupSharedIsReadOnly(t *testing.T) {
+	for _, request := range []any{CreateRequest{}, UpdateRequest{}} {
+		if _, exists := reflect.TypeOf(request).FieldByName("Shared"); exists {
+			t.Fatalf("%T must not expose Shared: it is read-only on the API", request)
+		}
+	}
+}
+
 func TestSecurityGroupListWalksAllPages(t *testing.T) {
 	client, transport := newClient(
 		t,

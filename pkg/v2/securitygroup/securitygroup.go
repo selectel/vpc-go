@@ -13,10 +13,16 @@ import (
 const collectionPath = "/v2.0/security-groups"
 
 // SecurityGroup is the observable representation returned by Neutron.
+//
+// Shared is read-only: its api-def sets neither allow_post nor allow_put, so no
+// caller can set it on create or update. A group becomes shared through an RBAC
+// policy with action access_as_shared, which the rbacpolicy package manages.
 type SecurityGroup struct {
 	ID                 string              `json:"id"`
 	Name               string              `json:"name"`
 	Description        string              `json:"description"`
+	Stateful           bool                `json:"stateful"`
+	Shared             bool                `json:"shared"`
 	SecurityGroupRules []SecurityGroupRule `json:"security_group_rules"`
 	ProjectID          string              `json:"project_id"`
 	RevisionNumber     int                 `json:"revision_number"`
@@ -45,15 +51,23 @@ type SecurityGroupRule struct {
 	UpdatedAt       string  `json:"updated_at"`
 }
 
+// CreateRequest contains the caller-writable attributes of a new group.
+//
+// Stateful is a pointer so an omitted value keeps the API default of true,
+// distinct from an explicit false. Shared is absent by design: it is read-only
+// on the API and is granted through an RBAC policy instead.
 type CreateRequest struct {
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
+	Stateful    *bool   `json:"stateful,omitempty"`
 	ProjectID   *string `json:"project_id,omitempty"`
 }
 
+// UpdateRequest contains the caller-writable attributes of an existing group.
 type UpdateRequest struct {
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
+	Stateful    *bool   `json:"stateful,omitempty"`
 }
 
 type envelope struct {

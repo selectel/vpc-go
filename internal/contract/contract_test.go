@@ -18,6 +18,7 @@ import (
 	"github.com/selectel/vpc-go/pkg/v2/network"
 	"github.com/selectel/vpc-go/pkg/v2/port"
 	"github.com/selectel/vpc-go/pkg/v2/router"
+	"github.com/selectel/vpc-go/pkg/v2/securitygroup"
 	"github.com/selectel/vpc-go/pkg/v2/subnet"
 	"github.com/selectel/vpc-go/pkg/v2/subnetpool"
 )
@@ -46,6 +47,23 @@ func TestContractNetworkAndPortAttributeMatrix(t *testing.T) {
 	assertFields(t, router.Router{}, []string{"FlavorID"}, nil)
 	assertFields(t, router.CreateRequest{}, []string{"FlavorID"}, nil)
 	assertFields(t, router.UpdateRequest{}, nil, []string{"FlavorID"})
+}
+
+// Sources:
+// neutron_lib/api/definitions/stateful_security_group.py, which sets allow_post
+// and allow_put for stateful, and
+// neutron_lib/api/definitions/security_groups_shared_filtering.py, which sets
+// neither for shared - a group is shared through an RBAC policy instead.
+func TestContractSecurityGroupAttributeMatrix(t *testing.T) {
+	assertFields(t, securitygroup.SecurityGroup{}, []string{"Stateful", "Shared"}, nil)
+	assertFields(t, securitygroup.CreateRequest{}, []string{"Stateful"}, []string{"Shared"})
+	assertFields(t, securitygroup.UpdateRequest{}, []string{"Stateful"}, []string{"Shared"})
+
+	// A pointer keeps an omitted stateful out of the request, so the API default
+	// of true survives instead of being overwritten with false.
+	pointerBool := reflect.TypeOf((*bool)(nil))
+	assertFieldType(t, securitygroup.CreateRequest{}, "Stateful", pointerBool)
+	assertFieldType(t, securitygroup.UpdateRequest{}, "Stateful", pointerBool)
 }
 
 // Sources:
