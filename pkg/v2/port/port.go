@@ -28,6 +28,17 @@ type ExtraDHCPOption struct {
 	IPVersion *int   `json:"ip_version,omitempty"`
 }
 
+// UpdateExtraDHCPOption is an extra DHCP option of an update request.
+//
+// Value is a pointer because an update does not replace the whole set of options:
+// an option the request leaves out keeps whatever it has, so the only way to remove
+// one is to send its name with an explicit null value.
+type UpdateExtraDHCPOption struct {
+	Name      string  `json:"opt_name"`
+	Value     *string `json:"opt_value"`
+	IPVersion *int    `json:"ip_version,omitempty"`
+}
+
 type DNSAssignment struct {
 	IPAddress string `json:"ip_address"`
 	Hostname  string `json:"hostname"`
@@ -82,18 +93,18 @@ type CreateRequest struct {
 }
 
 type UpdateRequest struct {
-	Name                *string               `json:"name,omitempty"`
-	Description         *string               `json:"description,omitempty"`
-	AdminStateUp        *bool                 `json:"admin_state_up,omitempty"`
-	FixedIPs            *[]FixedIP            `json:"fixed_ips,omitempty"`
-	DeviceID            *string               `json:"device_id,omitempty"`
-	DeviceOwner         *string               `json:"device_owner,omitempty"`
-	SecurityGroups      *[]string             `json:"security_groups,omitempty"`
-	AllowedAddressPairs *[]AllowedAddressPair `json:"allowed_address_pairs,omitempty"`
-	ExtraDHCPOptions    *[]ExtraDHCPOption    `json:"extra_dhcp_opts,omitempty"`
-	BindingVNICType     *string               `json:"binding:vnic_type,omitempty"`
-	DNSName             *string               `json:"dns_name,omitempty"`
-	DNSDomain           *string               `json:"dns_domain,omitempty"`
+	Name                *string                  `json:"name,omitempty"`
+	Description         *string                  `json:"description,omitempty"`
+	AdminStateUp        *bool                    `json:"admin_state_up,omitempty"`
+	FixedIPs            *[]FixedIP               `json:"fixed_ips,omitempty"`
+	DeviceID            *string                  `json:"device_id,omitempty"`
+	DeviceOwner         *string                  `json:"device_owner,omitempty"`
+	SecurityGroups      *[]string                `json:"security_groups,omitempty"`
+	AllowedAddressPairs *[]AllowedAddressPair    `json:"allowed_address_pairs,omitempty"`
+	ExtraDHCPOptions    *[]UpdateExtraDHCPOption `json:"extra_dhcp_opts,omitempty"`
+	BindingVNICType     *string                  `json:"binding:vnic_type,omitempty"`
+	DNSName             *string                  `json:"dns_name,omitempty"`
+	DNSDomain           *string                  `json:"dns_domain,omitempty"`
 }
 
 type envelope struct {

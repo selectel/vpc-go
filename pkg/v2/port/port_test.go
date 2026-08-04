@@ -63,10 +63,17 @@ func TestPortCRUDCollectionsAndFields(t *testing.T) {
 	if _, err := Get(context.Background(), client, "id"); err != nil {
 		t.Fatal(err)
 	}
+	// The update keeps one option and removes another: a removal is a name with an
+	// explicit null value, because an omitted option would simply stay as it is.
+	keptValue := "example.test"
+	updateOptions := []UpdateExtraDHCPOption{
+		{Name: "domain-name", Value: &keptValue},
+		{Name: "bootfile-name", Value: nil},
+	}
 	if _, err := Update(context.Background(), client, "id", UpdateRequest{
 		FixedIPs: &emptyIPs, SecurityGroups: &emptyStrings,
 		AllowedAddressPairs: &emptyPairs, DNSName: &dnsName, DNSDomain: &dnsDomain,
-		ExtraDHCPOptions: &dhcpOptions, BindingVNICType: &vnicType,
+		ExtraDHCPOptions: &updateOptions, BindingVNICType: &vnicType,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +83,8 @@ func TestPortCRUDCollectionsAndFields(t *testing.T) {
 	body, _ := io.ReadAll(transport.requests[2].Body)
 	for _, field := range []string{
 		`"fixed_ips":[]`, `"security_groups":[]`, `"allowed_address_pairs":[]`,
-		`"extra_dhcp_opts":[{"opt_name":"domain-name","opt_value":"example.test"}]`,
+		`"extra_dhcp_opts":[{"opt_name":"domain-name","opt_value":"example.test"},` +
+			`{"opt_name":"bootfile-name","opt_value":null}]`,
 		`"binding:vnic_type":"normal"`,
 		`"dns_name":"host"`, `"dns_domain":"example.test."`,
 	} {
