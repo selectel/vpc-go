@@ -61,13 +61,8 @@ type networkEnvelope struct {
 }
 
 type listEnvelope struct {
-	Networks []Network `json:"networks"`
-	Links    []link    `json:"networks_links"`
-}
-
-type link struct {
-	Rel  string `json:"rel"`
-	Href string `json:"href"`
+	Networks []Network      `json:"networks"`
+	Links    []api.PageLink `json:"networks_links"`
 }
 
 // Create creates one network with one HTTP request.
@@ -163,7 +158,7 @@ func List(
 		)
 		return vpc.Page[Network]{
 			Items:    envelope.Networks,
-			NextLink: nextLink(envelope.Links),
+			NextLink: api.NextPageLink(envelope.Links),
 		}, err
 	})
 }
@@ -208,13 +203,4 @@ func (tags Tags) DeleteAll(ctx context.Context) error {
 
 func resourcePath(networkID string) string {
 	return collectionPath + "/" + url.PathEscape(networkID)
-}
-
-func nextLink(links []link) string {
-	for _, link := range links {
-		if link.Rel == "next" {
-			return link.Href
-		}
-	}
-	return ""
 }

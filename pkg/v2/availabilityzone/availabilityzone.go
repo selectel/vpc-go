@@ -35,12 +35,7 @@ type AvailabilityZone struct {
 
 type listEnvelope struct {
 	AvailabilityZones []AvailabilityZone `json:"availability_zones"`
-	Links             []link             `json:"availability_zones_links"`
-}
-
-type link struct {
-	Rel  string `json:"rel"`
-	Href string `json:"href"`
+	Links             []api.PageLink     `json:"availability_zones_links"`
 }
 
 // List returns the availability zones of the region the client is scoped to.
@@ -62,17 +57,7 @@ func List(
 		)
 
 		return vpc.Page[AvailabilityZone]{
-			Items: result.AvailabilityZones, NextLink: nextLink(result.Links),
+			Items: result.AvailabilityZones, NextLink: api.NextPageLink(result.Links),
 		}, err
 	})
-}
-
-func nextLink(links []link) string {
-	for _, link := range links {
-		if link.Rel == "next" {
-			return link.Href
-		}
-	}
-
-	return ""
 }

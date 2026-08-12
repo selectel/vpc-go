@@ -73,12 +73,8 @@ type envelope struct {
 	Router Router `json:"router"`
 }
 type listEnvelope struct {
-	Routers []Router `json:"routers"`
-	Links   []link   `json:"routers_links"`
-}
-type link struct {
-	Rel  string `json:"rel"`
-	Href string `json:"href"`
+	Routers []Router       `json:"routers"`
+	Links   []api.PageLink `json:"routers_links"`
 }
 
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Router, error) {
@@ -127,7 +123,7 @@ func List(ctx context.Context, client *vpc.Client, options vpc.ListOptions) ([]R
 		var result listEnvelope
 		err := api.Request(ctx, client, http.MethodGet, collectionPath, query, nil, &result,
 			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}})
-		return vpc.Page[Router]{Items: result.Routers, NextLink: nextLink(result.Links)}, err
+		return vpc.Page[Router]{Items: result.Routers, NextLink: api.NextPageLink(result.Links)}, err
 	})
 }
 
@@ -151,11 +147,3 @@ func (tags Tags) Replace(ctx context.Context, values []string) ([]string, error)
 func (tags Tags) DeleteAll(ctx context.Context) error { return tags.operations.DeleteAll(ctx) }
 
 func resourcePath(id string) string { return collectionPath + "/" + url.PathEscape(id) }
-func nextLink(links []link) string {
-	for _, link := range links {
-		if link.Rel == "next" {
-			return link.Href
-		}
-	}
-	return ""
-}

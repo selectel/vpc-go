@@ -99,12 +99,8 @@ type envelope struct {
 }
 
 type listEnvelope struct {
-	Ports []Port `json:"ports"`
-	Links []link `json:"ports_links"`
-}
-
-type link struct {
-	Rel, Href string
+	Ports []Port         `json:"ports"`
+	Links []api.PageLink `json:"ports_links"`
 }
 
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Port, error) {
@@ -160,7 +156,7 @@ func List(ctx context.Context, client *vpc.Client, options vpc.ListOptions) ([]P
 		err := api.Request(ctx, client, http.MethodGet, collectionPath, query, nil, &result,
 			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
 		)
-		return vpc.Page[Port]{Items: result.Ports, NextLink: nextLink(result.Links)}, err
+		return vpc.Page[Port]{Items: result.Ports, NextLink: api.NextPageLink(result.Links)}, err
 	})
 }
 
@@ -184,11 +180,3 @@ func (tags Tags) Replace(ctx context.Context, values []string) ([]string, error)
 func (tags Tags) DeleteAll(ctx context.Context) error { return tags.operations.DeleteAll(ctx) }
 
 func resourcePath(id string) string { return collectionPath + "/" + url.PathEscape(id) }
-func nextLink(links []link) string {
-	for _, link := range links {
-		if link.Rel == "next" {
-			return link.Href
-		}
-	}
-	return ""
-}

@@ -48,7 +48,7 @@ type portForwardingEnvelope struct {
 
 type portForwardingListEnvelope struct {
 	PortForwardings []PortForwarding `json:"port_forwardings"`
-	Links           []link           `json:"port_forwardings_links"`
+	Links           []api.PageLink   `json:"port_forwardings_links"`
 }
 
 // CreatePortForwarding creates one rule under floatingIPID.
@@ -161,7 +161,7 @@ func ListPortForwardings(
 		)
 		return vpc.Page[PortForwarding]{
 			Items:    envelope.PortForwardings,
-			NextLink: nextLink(envelope.Links),
+			NextLink: api.NextPageLink(envelope.Links),
 		}, err
 	})
 }

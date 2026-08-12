@@ -49,10 +49,9 @@ type envelope struct {
 	FloatingIP FloatingIP `json:"floatingip"`
 }
 type listEnvelope struct {
-	FloatingIPs []FloatingIP `json:"floatingips"`
-	Links       []link       `json:"floatingips_links"`
+	FloatingIPs []FloatingIP   `json:"floatingips"`
+	Links       []api.PageLink `json:"floatingips_links"`
 }
-type link struct{ Rel, Href string }
 
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*FloatingIP, error) {
 	var result envelope
@@ -99,7 +98,7 @@ func List(ctx context.Context, client *vpc.Client, options vpc.ListOptions) ([]F
 	return vpc.WalkPages(ctx, options.Values(), func(ctx context.Context, q url.Values) (vpc.Page[FloatingIP], error) {
 		var result listEnvelope
 		err := api.Request(ctx, client, http.MethodGet, collectionPath, q, nil, &result, api.RequestOptions{ExpectedStatus: []int{http.StatusOK}})
-		return vpc.Page[FloatingIP]{Items: result.FloatingIPs, NextLink: nextLink(result.Links)}, err
+		return vpc.Page[FloatingIP]{Items: result.FloatingIPs, NextLink: api.NextPageLink(result.Links)}, err
 	})
 }
 
@@ -117,11 +116,3 @@ func (t Tags) Replace(ctx context.Context, v []string) ([]string, error) {
 }
 func (t Tags) DeleteAll(ctx context.Context) error { return t.operations.DeleteAll(ctx) }
 func resourcePath(id string) string                { return collectionPath + "/" + url.PathEscape(id) }
-func nextLink(ls []link) string {
-	for _, l := range ls {
-		if l.Rel == "next" {
-			return l.Href
-		}
-	}
-	return ""
-}

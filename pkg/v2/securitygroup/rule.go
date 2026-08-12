@@ -93,7 +93,7 @@ type ruleEnvelope struct {
 
 type ruleListEnvelope struct {
 	SecurityGroupRules []SecurityGroupRule `json:"security_group_rules"`
-	Links              []link              `json:"security_group_rules_links"`
+	Links              []api.PageLink      `json:"security_group_rules_links"`
 }
 
 func CreateRule(
@@ -173,7 +173,7 @@ func ListRules(
 		)
 		return vpc.Page[SecurityGroupRule]{
 			Items:    result.SecurityGroupRules,
-			NextLink: nextLink(result.Links),
+			NextLink: api.NextPageLink(result.Links),
 		}, err
 	})
 }

@@ -72,12 +72,7 @@ type envelope struct {
 
 type listEnvelope struct {
 	SecurityGroups []SecurityGroup `json:"security_groups"`
-	Links          []link          `json:"security_groups_links"`
-}
-
-type link struct {
-	Rel  string `json:"rel"`
-	Href string `json:"href"`
+	Links          []api.PageLink  `json:"security_groups_links"`
 }
 
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*SecurityGroup, error) {
@@ -168,7 +163,7 @@ func List(
 		)
 		return vpc.Page[SecurityGroup]{
 			Items:    result.SecurityGroups,
-			NextLink: nextLink(result.Links),
+			NextLink: api.NextPageLink(result.Links),
 		}, err
 	})
 }
@@ -207,13 +202,4 @@ func (tags Tags) DeleteAll(ctx context.Context) error {
 
 func resourcePath(securityGroupID string) string {
 	return collectionPath + "/" + url.PathEscape(securityGroupID)
-}
-
-func nextLink(links []link) string {
-	for _, link := range links {
-		if link.Rel == "next" {
-			return link.Href
-		}
-	}
-	return ""
 }

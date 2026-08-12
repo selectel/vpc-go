@@ -80,13 +80,8 @@ type envelope struct {
 }
 
 type listEnvelope struct {
-	Subnets []Subnet `json:"subnets"`
-	Links   []link   `json:"subnets_links"`
-}
-
-type link struct {
-	Rel  string `json:"rel"`
-	Href string `json:"href"`
+	Subnets []Subnet       `json:"subnets"`
+	Links   []api.PageLink `json:"subnets_links"`
 }
 
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Subnet, error) {
@@ -156,7 +151,7 @@ func List(
 		)
 		return vpc.Page[Subnet]{
 			Items:    result.Subnets,
-			NextLink: nextLink(result.Links),
+			NextLink: api.NextPageLink(result.Links),
 		}, err
 	})
 }
@@ -197,13 +192,4 @@ func (tags Tags) DeleteAll(ctx context.Context) error {
 
 func resourcePath(subnetID string) string {
 	return collectionPath + "/" + url.PathEscape(subnetID)
-}
-
-func nextLink(links []link) string {
-	for _, link := range links {
-		if link.Rel == "next" {
-			return link.Href
-		}
-	}
-	return ""
 }
