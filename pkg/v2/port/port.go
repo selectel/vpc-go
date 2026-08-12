@@ -39,12 +39,6 @@ type UpdateExtraDHCPOption struct {
 	IPVersion *int    `json:"ip_version,omitempty"`
 }
 
-type DNSAssignment struct {
-	IPAddress string `json:"ip_address"`
-	Hostname  string `json:"hostname"`
-	FQDN      string `json:"fqdn"`
-}
-
 type Port struct {
 	ID                  string               `json:"id"`
 	NetworkID           string               `json:"network_id"`
@@ -60,8 +54,6 @@ type Port struct {
 	AllowedAddressPairs []AllowedAddressPair `json:"allowed_address_pairs"`
 	ExtraDHCPOptions    []ExtraDHCPOption    `json:"extra_dhcp_opts"`
 	PortSecurityEnabled bool                 `json:"port_security_enabled"`
-	QoSPolicyID         *string              `json:"qos_policy_id"`
-	BindingVNICType     string               `json:"binding:vnic_type"`
 	ProjectID           string               `json:"project_id"`
 	RevisionNumber      int                  `json:"revision_number"`
 	CreatedAt           string               `json:"created_at"`
@@ -70,8 +62,6 @@ type Port struct {
 	Blocked             bool                 `json:"blocked"`
 	DHCPBlocked         bool                 `json:"dhcp_blocked"`
 	DNSName             string               `json:"dns_name,omitempty"`
-	DNSDomain           string               `json:"dns_domain,omitempty"`
-	DNSAssignment       []DNSAssignment      `json:"dns_assignment,omitempty"`
 }
 
 type CreateRequest struct {
@@ -86,10 +76,8 @@ type CreateRequest struct {
 	SecurityGroups      *[]string             `json:"security_groups,omitempty"`
 	AllowedAddressPairs *[]AllowedAddressPair `json:"allowed_address_pairs,omitempty"`
 	ExtraDHCPOptions    *[]ExtraDHCPOption    `json:"extra_dhcp_opts,omitempty"`
-	BindingVNICType     *string               `json:"binding:vnic_type,omitempty"`
 	ProjectID           *string               `json:"project_id,omitempty"`
 	DNSName             *string               `json:"dns_name,omitempty"`
-	DNSDomain           *string               `json:"dns_domain,omitempty"`
 }
 
 type UpdateRequest struct {
@@ -102,9 +90,7 @@ type UpdateRequest struct {
 	SecurityGroups      *[]string                `json:"security_groups,omitempty"`
 	AllowedAddressPairs *[]AllowedAddressPair    `json:"allowed_address_pairs,omitempty"`
 	ExtraDHCPOptions    *[]UpdateExtraDHCPOption `json:"extra_dhcp_opts,omitempty"`
-	BindingVNICType     *string                  `json:"binding:vnic_type,omitempty"`
 	DNSName             *string                  `json:"dns_name,omitempty"`
-	DNSDomain           *string                  `json:"dns_domain,omitempty"`
 }
 
 type envelope struct {

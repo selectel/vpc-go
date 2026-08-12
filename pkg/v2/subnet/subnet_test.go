@@ -39,7 +39,7 @@ func response(status int, body string) *http.Response {
 func TestSubnetCRUDAndGatewayNull(t *testing.T) {
 	model := `{"subnet":{"id":"id","network_id":"network","ip_version":4,` +
 		`"cidr":"192.0.2.0/24","service_types":["network:floatingip_agent_gateway"],` +
-		`"dns_publish_fixed_ip":true,"blocked":true}}`
+		`"blocked":true}}`
 	client, transport := newTestClient(
 		t,
 		response(201, model),
@@ -48,22 +48,20 @@ func TestSubnetCRUDAndGatewayNull(t *testing.T) {
 		response(204, ""),
 	)
 	cidr := "192.0.2.0/24"
-	publishFixedIP := true
 	created, err := Create(context.Background(), client, CreateRequest{
 		NetworkID: "network", IPVersion: 4, CIDR: &cidr,
-		DNSPublishFixedIP: &publishFixedIP,
 	})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if !created.DNSPublishFixedIP {
+	if !created.Blocked {
 		t.Fatalf("created subnet = %+v", created)
 	}
 	if _, err := Get(context.Background(), client, "id"); err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
 	if _, err := Update(context.Background(), client, "id", UpdateRequest{
-		GatewayIP: vpc.Null[string](), DNSPublishFixedIP: &publishFixedIP,
+		GatewayIP: vpc.Null[string](),
 	}); err != nil {
 		t.Fatalf("Update() error = %v", err)
 	}
@@ -78,10 +76,8 @@ func TestSubnetCRUDAndGatewayNull(t *testing.T) {
 	if !strings.Contains(string(updateBody), `"gateway_ip":null`) {
 		t.Fatalf("update body = %s", updateBody)
 	}
-	if !strings.Contains(string(updateBody), `"dns_publish_fixed_ip":true`) {
-		t.Fatalf("update body = %s", updateBody)
-	}
-	if strings.Contains(string(updateBody), "service_types") ||
+	if strings.Contains(string(updateBody), "dns_publish_fixed_ip") ||
+		strings.Contains(string(updateBody), "service_types") ||
 		strings.Contains(string(updateBody), "segment_id") {
 		t.Fatalf("update body contains administrative fields: %s", updateBody)
 	}

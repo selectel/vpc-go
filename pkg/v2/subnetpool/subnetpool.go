@@ -21,7 +21,6 @@ type SubnetPool struct {
 	DefaultPrefixLen int      `json:"default_prefixlen"`
 	MinPrefixLen     int      `json:"min_prefixlen"`
 	MaxPrefixLen     int      `json:"max_prefixlen"`
-	AddressScopeID   *string  `json:"address_scope_id"`
 	IPVersion        int      `json:"ip_version"`
 	IsDefault        bool     `json:"is_default"`
 	Shared           bool     `json:"shared"`
@@ -40,19 +39,17 @@ type CreateRequest struct {
 	DefaultPrefixLen *int     `json:"default_prefixlen,omitempty"`
 	MinPrefixLen     *int     `json:"min_prefixlen,omitempty"`
 	MaxPrefixLen     *int     `json:"max_prefixlen,omitempty"`
-	AddressScopeID   *string  `json:"address_scope_id,omitempty"`
 	ProjectID        *string  `json:"project_id,omitempty"`
 }
 
 type UpdateRequest struct {
-	Name             *string               `json:"name,omitempty"`
-	Description      *string               `json:"description,omitempty"`
-	Prefixes         *[]string             `json:"prefixes,omitempty"`
-	DefaultQuota     *int                  `json:"default_quota,omitempty"`
-	DefaultPrefixLen *int                  `json:"default_prefixlen,omitempty"`
-	MinPrefixLen     *int                  `json:"min_prefixlen,omitempty"`
-	MaxPrefixLen     *int                  `json:"max_prefixlen,omitempty"`
-	AddressScopeID   *vpc.Optional[string] `json:"address_scope_id,omitempty"`
+	Name             *string   `json:"name,omitempty"`
+	Description      *string   `json:"description,omitempty"`
+	Prefixes         *[]string `json:"prefixes,omitempty"`
+	DefaultQuota     *int      `json:"default_quota,omitempty"`
+	DefaultPrefixLen *int      `json:"default_prefixlen,omitempty"`
+	MinPrefixLen     *int      `json:"min_prefixlen,omitempty"`
+	MaxPrefixLen     *int      `json:"max_prefixlen,omitempty"`
 }
 
 type envelope struct {

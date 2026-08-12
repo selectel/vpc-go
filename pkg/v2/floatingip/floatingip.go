@@ -21,15 +21,12 @@ type FloatingIP struct {
 	RouterID          *string  `json:"router_id"`
 	Description       string   `json:"description"`
 	Status            string   `json:"status"`
-	QoSPolicyID       *string  `json:"qos_policy_id"`
 	ProjectID         string   `json:"project_id"`
 	RevisionNumber    int      `json:"revision_number"`
 	CreatedAt         string   `json:"created_at"`
 	UpdatedAt         string   `json:"updated_at"`
 	Tags              []string `json:"tags"`
 	Blocked           bool     `json:"blocked"`
-	DNSName           string   `json:"dns_name,omitempty"`
-	DNSDomain         string   `json:"dns_domain,omitempty"`
 }
 
 type CreateRequest struct {
@@ -39,16 +36,12 @@ type CreateRequest struct {
 	FixedIPAddress    *string `json:"fixed_ip_address,omitempty"`
 	Description       *string `json:"description,omitempty"`
 	ProjectID         *string `json:"project_id,omitempty"`
-	DNSName           *string `json:"dns_name,omitempty"`
-	DNSDomain         *string `json:"dns_domain,omitempty"`
 }
 
 type UpdateRequest struct {
 	PortID         *vpc.Optional[string] `json:"port_id,omitempty"`
 	FixedIPAddress *vpc.Optional[string] `json:"fixed_ip_address,omitempty"`
 	Description    *string               `json:"description,omitempty"`
-	DNSName        *string               `json:"dns_name,omitempty"`
-	DNSDomain      *string               `json:"dns_domain,omitempty"`
 }
 
 type envelope struct {

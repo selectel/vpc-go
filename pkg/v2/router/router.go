@@ -41,7 +41,6 @@ type Router struct {
 	AdminStateUp          bool                 `json:"admin_state_up"`
 	ExternalGateway       *ExternalGatewayInfo `json:"external_gateway_info"`
 	Routes                []Route              `json:"routes"`
-	FlavorID              *string              `json:"flavor_id"`
 	AvailabilityZones     []string             `json:"availability_zones"`
 	AvailabilityZoneHints []string             `json:"availability_zone_hints"`
 	ProjectID             string               `json:"project_id"`
@@ -58,7 +57,6 @@ type CreateRequest struct {
 	AdminStateUp          *bool                                 `json:"admin_state_up,omitempty"`
 	ExternalGateway       *vpc.Optional[ExternalGatewayRequest] `json:"external_gateway_info,omitempty"`
 	AvailabilityZoneHints *[]string                             `json:"availability_zone_hints,omitempty"`
-	FlavorID              *string                               `json:"flavor_id,omitempty"`
 	ProjectID             *string                               `json:"project_id,omitempty"`
 }
 

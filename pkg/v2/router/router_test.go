@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -40,15 +41,13 @@ func TestRouterCRUDFieldsListTags(t *testing.T) {
 		`"external_fixed_ips":[{"subnet_id":"sub","ip_address":"192.0.2.1"}]}}}`
 	client, transport := newClient(t, response(201, model), response(200, model), response(200, model), response(204, ""), response(200, `{"routers":[{"id":"id"}],"routers_links":[]}`), response(200, `{"tags":[]}`))
 	enable := true
-	flavorID := "flavor"
 	created, err := Create(context.Background(), client, CreateRequest{
 		ExternalGateway: vpc.Value(ExternalGatewayRequest{NetworkID: "ext", EnableSNAT: &enable}),
-		FlavorID:        &flavorID,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created.FlavorID == nil || *created.FlavorID != flavorID {
+	if created.ID != "id" {
 		t.Fatalf("created router = %+v", created)
 	}
 	if _, err := Get(context.Background(), client, "id"); err != nil {
@@ -73,11 +72,19 @@ func TestRouterCRUDFieldsListTags(t *testing.T) {
 			t.Fatalf("create body contains %s: %s", forbidden, createBody)
 		}
 	}
-	if !strings.Contains(string(createBody), `"flavor_id":"flavor"`) {
-		t.Fatalf("create body=%s", createBody)
+	if strings.Contains(string(createBody), "flavor_id") {
+		t.Fatalf("create body contains flavor_id: %s", createBody)
 	}
 	if !strings.Contains(string(updateBody), `"external_gateway_info":null`) {
 		t.Fatalf("update body=%s", updateBody)
+	}
+}
+
+func TestRouterPublicContractFields(t *testing.T) {
+	for _, value := range []any{Router{}, CreateRequest{}, UpdateRequest{}} {
+		if _, exists := reflect.TypeOf(value).FieldByName("FlavorID"); exists {
+			t.Fatalf("%T unexpectedly exposes FlavorID", value)
+		}
 	}
 }
 

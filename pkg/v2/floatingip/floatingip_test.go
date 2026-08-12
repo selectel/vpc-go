@@ -44,11 +44,8 @@ func TestFloatingIPCRUDDetachListAndTags(t *testing.T) {
 	if _, e := Get(context.Background(), c, "id"); e != nil {
 		t.Fatal(e)
 	}
-	dnsName := "www"
-	dnsDomain := "example.test."
 	if _, e := Update(context.Background(), c, "id", UpdateRequest{
 		PortID: vpc.Null[string](), FixedIPAddress: vpc.Null[string](),
-		DNSName: &dnsName, DNSDomain: &dnsDomain,
 	}); e != nil {
 		t.Fatal(e)
 	}
@@ -69,13 +66,18 @@ func TestFloatingIPCRUDDetachListAndTags(t *testing.T) {
 		}
 	}
 	if !strings.Contains(string(updateBody), `"port_id":null`) ||
-		!strings.Contains(string(updateBody), `"fixed_ip_address":null`) ||
-		!strings.Contains(string(updateBody), `"dns_name":"www"`) ||
-		!strings.Contains(string(updateBody), `"dns_domain":"example.test."`) {
+		!strings.Contains(string(updateBody), `"fixed_ip_address":null`) {
 		t.Fatalf("update=%s", updateBody)
 	}
 	if _, exists := reflect.TypeOf(FloatingIP{}).FieldByName("SubnetID"); exists {
 		t.Fatal("FloatingIP exposes create-only SubnetID")
+	}
+	for _, value := range []any{FloatingIP{}, CreateRequest{}, UpdateRequest{}} {
+		for _, field := range []string{"DNSName", "DNSDomain"} {
+			if _, exists := reflect.TypeOf(value).FieldByName(field); exists {
+				t.Fatalf("%T unexpectedly exposes %s", value, field)
+			}
+		}
 	}
 }
 

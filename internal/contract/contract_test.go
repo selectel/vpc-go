@@ -12,8 +12,6 @@ import (
 	"testing"
 
 	vpc "github.com/selectel/vpc-go/pkg/v2"
-	"github.com/selectel/vpc-go/pkg/v2/addressscope"
-	"github.com/selectel/vpc-go/pkg/v2/firewallrule"
 	"github.com/selectel/vpc-go/pkg/v2/floatingip"
 	"github.com/selectel/vpc-go/pkg/v2/network"
 	"github.com/selectel/vpc-go/pkg/v2/port"
@@ -23,29 +21,30 @@ import (
 	"github.com/selectel/vpc-go/pkg/v2/subnetpool"
 )
 
-// Sources:
-// neutron/extensions/dns.py, neutron/extensions/dns_domain_ports.py,
-// neutron/extensions/extra_dhcp_opt.py and neutron/objects/ports.py.
+// Sources: the Selectel Private DNS integration contract and
+// neutron/extensions/extra_dhcp_opt.py.
 func TestContractNetworkAndPortAttributeMatrix(t *testing.T) {
-	assertFields(t, network.Network{}, []string{"DNSDomain"}, nil)
+	assertFields(t, network.Network{}, []string{"DNSDomain", "IsDNSEnabled"}, []string{"QoSPolicyID"})
 	assertFields(t, network.CreateRequest{}, []string{"DNSDomain"},
-		[]string{"Shared", "RouterExternal", "Segments"})
+		[]string{"Shared", "RouterExternal", "Segments", "IsDNSEnabled"})
 	assertFields(t, network.UpdateRequest{}, []string{"DNSDomain"},
-		[]string{"Shared", "RouterExternal", "Segments"})
+		[]string{"Shared", "RouterExternal", "Segments", "IsDNSEnabled"})
 
 	assertFields(t, port.Port{},
-		[]string{"DNSName", "DNSDomain", "DNSAssignment", "ExtraDHCPOptions", "BindingVNICType"}, nil)
+		[]string{"DNSName", "ExtraDHCPOptions"},
+		[]string{"DNSDomain", "DNSAssignment", "QoSPolicyID", "BindingVNICType"})
 	assertFields(t, port.CreateRequest{},
-		[]string{"DNSName", "DNSDomain", "ExtraDHCPOptions", "BindingVNICType"}, nil)
+		[]string{"DNSName", "ExtraDHCPOptions"}, []string{"DNSDomain", "DNSAssignment", "BindingVNICType"})
 	assertFields(t, port.UpdateRequest{},
-		[]string{"DNSName", "DNSDomain", "ExtraDHCPOptions", "BindingVNICType"}, nil)
+		[]string{"DNSName", "ExtraDHCPOptions"}, []string{"DNSDomain", "DNSAssignment", "BindingVNICType"})
 
-	assertFields(t, subnet.Subnet{}, []string{"DNSPublishFixedIP"}, []string{"SegmentID"})
-	assertFields(t, subnet.CreateRequest{}, []string{"DNSPublishFixedIP"}, []string{"SegmentID"})
-	assertFields(t, subnet.UpdateRequest{}, []string{"DNSPublishFixedIP"}, []string{"SegmentID"})
+	assertFields(t, subnet.Subnet{}, []string{"DNSNameservers"}, []string{"DNSPublishFixedIP", "SegmentID"})
+	assertFields(t, subnet.CreateRequest{}, []string{"DNSNameservers"}, []string{"DNSPublishFixedIP", "SegmentID"})
+	assertFields(t, subnet.UpdateRequest{}, []string{"DNSNameservers"}, []string{"DNSPublishFixedIP", "SegmentID"})
 
-	assertFields(t, router.Router{}, []string{"FlavorID"}, nil)
-	assertFields(t, router.CreateRequest{}, []string{"FlavorID"}, nil)
+	assertFields(t, router.Router{}, nil, []string{"FlavorID"})
+	assertFields(t, router.ExternalGatewayInfo{}, nil, []string{"QoSPolicyID"})
+	assertFields(t, router.CreateRequest{}, nil, []string{"FlavorID"})
 	assertFields(t, router.UpdateRequest{}, nil, []string{"FlavorID"})
 }
 
@@ -70,35 +69,25 @@ func TestContractSecurityGroupAttributeMatrix(t *testing.T) {
 // neutron/extensions/l3.py, neutron/extensions/floatingip_pools.py,
 // neutron/extensions/subnetpool_prefix_ops.py and neutron/db/models_v2.py.
 func TestContractFloatingIPAndSubnetPoolAttributeMatrix(t *testing.T) {
-	assertFields(t, floatingip.FloatingIP{}, []string{"DNSName", "DNSDomain"},
-		[]string{"SubnetID"})
+	assertFields(t, floatingip.FloatingIP{}, nil,
+		[]string{"SubnetID", "DNSName", "DNSDomain", "QoSPolicyID"})
 	assertFields(t, floatingip.CreateRequest{},
-		[]string{"SubnetID", "DNSName", "DNSDomain"}, nil)
+		[]string{"SubnetID"}, []string{"DNSName", "DNSDomain"})
 	assertFields(t, floatingip.UpdateRequest{},
-		[]string{"PortID", "FixedIPAddress", "DNSName", "DNSDomain"}, nil)
+		[]string{"PortID", "FixedIPAddress"}, []string{"DNSName", "DNSDomain"})
 
 	optionalType := reflect.TypeOf((*vpc.Optional[string])(nil))
 	assertFieldType(t, floatingip.UpdateRequest{}, "PortID", optionalType)
 	assertFieldType(t, floatingip.UpdateRequest{}, "FixedIPAddress", optionalType)
-	assertFieldType(t, subnetpool.UpdateRequest{}, "AddressScopeID", optionalType)
+	assertFields(t, subnetpool.SubnetPool{}, nil, []string{"AddressScopeID"})
+	assertFields(t, subnetpool.CreateRequest{}, nil, []string{"AddressScopeID"})
+	assertFields(t, subnetpool.UpdateRequest{}, nil, []string{"AddressScopeID"})
 }
 
 func TestContractRequiredCreateFields(t *testing.T) {
-	assertRequiredJSONField(t, addressscope.CreateRequest{}, "IPVersion", "ip_version")
 	assertRequiredJSONField(t, subnet.CreateRequest{}, "NetworkID", "network_id")
 	assertRequiredJSONField(t, subnet.CreateRequest{}, "IPVersion", "ip_version")
 	assertRequiredJSONField(t, subnetpool.CreateRequest{}, "Prefixes", "prefixes")
-}
-
-// Source: neutron_fwaas/services/firewall/service_drivers/driver_api.py and
-// neutron_fwaas/db/firewall/v2/firewall_db_v2.py.
-func TestContractFirewallRuleNullableResponseFields(t *testing.T) {
-	pointerString := reflect.TypeOf((*string)(nil))
-	for _, name := range []string{
-		"Protocol", "SourceIPAddress", "DestinationIPAddress", "SourcePort", "DestinationPort",
-	} {
-		assertFieldType(t, firewallrule.FirewallRule{}, name, pointerString)
-	}
 }
 
 // Sources: neutron_lib/exceptions/__init__.py and the Neutron v2 API

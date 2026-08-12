@@ -37,27 +37,24 @@ func newClient(t *testing.T, responses ...*http.Response) (*vpc.Client, *scripte
 
 func TestPortCRUDCollectionsAndFields(t *testing.T) {
 	model := `{"port":{"id":"id","network_id":"net","status":"DOWN","binding:vnic_type":"normal",` +
-		`"blocked":true,"dhcp_blocked":true,"dns_name":"host","dns_domain":"example.test.",` +
+		`"blocked":true,"dhcp_blocked":true,"dns_name":"host",` +
 		`"extra_dhcp_opts":[{"opt_name":"domain-name","opt_value":"example.test","ip_version":4}],` +
-		`"dns_assignment":[{"ip_address":"192.0.2.10","hostname":"host","fqdn":"host.example.test."}]}}`
+		`"dns_domain":"ignored.example.","dns_assignment":[{"fqdn":"ignored.example."}]}}`
 	client, transport := newClient(t, response(201, model), response(200, model), response(200, model), response(204, ""))
 	emptyStrings := []string{}
 	emptyIPs := []FixedIP{}
 	emptyPairs := []AllowedAddressPair{}
 	dhcpOptions := []ExtraDHCPOption{{Name: "domain-name", Value: "example.test"}}
 	dnsName := "host"
-	dnsDomain := "example.test."
-	vnicType := "normal"
 	created, err := Create(context.Background(), client, CreateRequest{
 		NetworkID: "net", SecurityGroups: &emptyStrings,
-		ExtraDHCPOptions: &dhcpOptions, BindingVNICType: &vnicType,
-		DNSName: &dnsName, DNSDomain: &dnsDomain,
+		ExtraDHCPOptions: &dhcpOptions,
+		DNSName:          &dnsName,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created.DNSDomain != dnsDomain || len(created.DNSAssignment) != 1 ||
-		len(created.ExtraDHCPOptions) != 1 || created.BindingVNICType != vnicType {
+	if created.DNSName != dnsName || len(created.ExtraDHCPOptions) != 1 {
 		t.Fatalf("created=%+v", created)
 	}
 	if _, err := Get(context.Background(), client, "id"); err != nil {
@@ -72,8 +69,8 @@ func TestPortCRUDCollectionsAndFields(t *testing.T) {
 	}
 	if _, err := Update(context.Background(), client, "id", UpdateRequest{
 		FixedIPs: &emptyIPs, SecurityGroups: &emptyStrings,
-		AllowedAddressPairs: &emptyPairs, DNSName: &dnsName, DNSDomain: &dnsDomain,
-		ExtraDHCPOptions: &updateOptions, BindingVNICType: &vnicType,
+		AllowedAddressPairs: &emptyPairs, DNSName: &dnsName,
+		ExtraDHCPOptions: &updateOptions,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -85,14 +82,13 @@ func TestPortCRUDCollectionsAndFields(t *testing.T) {
 		`"fixed_ips":[]`, `"security_groups":[]`, `"allowed_address_pairs":[]`,
 		`"extra_dhcp_opts":[{"opt_name":"domain-name","opt_value":"example.test"},` +
 			`{"opt_name":"bootfile-name","opt_value":null}]`,
-		`"binding:vnic_type":"normal"`,
-		`"dns_name":"host"`, `"dns_domain":"example.test."`,
+		`"dns_name":"host"`,
 	} {
 		if !strings.Contains(string(body), field) {
 			t.Fatalf("update body %s lacks %s", body, field)
 		}
 	}
-	for _, forbidden := range []string{"mac_address", "blocked", "dhcp_blocked", "qos_policy_id", "port_security_enabled"} {
+	for _, forbidden := range []string{"mac_address", "blocked", "dhcp_blocked", "qos_policy_id", "port_security_enabled", "dns_domain", "dns_assignment", "binding:vnic_type"} {
 		if strings.Contains(string(body), forbidden) {
 			t.Fatalf("update body contains %s", forbidden)
 		}
@@ -150,10 +146,10 @@ func TestPortPublicContractFields(t *testing.T) {
 			t.Fatalf("%T does not expose ExtraDHCPOptions", value)
 		}
 	}
-	for _, value := range []any{CreateRequest{}, UpdateRequest{}} {
-		for _, field := range []string{"DNSDomain", "BindingVNICType"} {
-			if _, exists := reflect.TypeOf(value).FieldByName(field); !exists {
-				t.Fatalf("%T does not expose %s", value, field)
+	for _, value := range []any{Port{}, CreateRequest{}, UpdateRequest{}} {
+		for _, field := range []string{"DNSDomain", "DNSAssignment", "BindingVNICType"} {
+			if _, exists := reflect.TypeOf(value).FieldByName(field); exists {
+				t.Fatalf("%T unexpectedly exposes %s", value, field)
 			}
 		}
 	}

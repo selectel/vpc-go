@@ -27,9 +27,6 @@ type Network struct {
 	PortSecurityEnabled   bool     `json:"port_security_enabled"`
 	AvailabilityZones     []string `json:"availability_zones"`
 	AvailabilityZoneHints []string `json:"availability_zone_hints"`
-	IPv4AddressScope      *string  `json:"ipv4_address_scope"`
-	IPv6AddressScope      *string  `json:"ipv6_address_scope"`
-	QoSPolicyID           *string  `json:"qos_policy_id"`
 	ProviderNetworkType   string   `json:"provider:network_type"`
 	ProviderPhysicalNet   *string  `json:"provider:physical_network"`
 	ProviderSegmentation  *int     `json:"provider:segmentation_id"`

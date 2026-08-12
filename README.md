@@ -1,7 +1,7 @@
 # vpc-go
 
-`vpc-go` is a typed Go SDK for the Selectel Neutron network API. Its public
-API is versioned by the network API generation and is imported from
+`vpc-go` is a typed Go SDK for the Selectel VPC network API compatible with Openstack Neutron API.
+Its public API is versioned by the network API generation and is imported from
 `github.com/selectel/vpc-go/pkg/v2`.
 
 ## Access scope and authentication
@@ -26,20 +26,7 @@ An application can supply its own HTTP client in `Config.HTTPClient`.
 
 The root `pkg/v2` package contains the client, selection and pagination
 options, optional request values, tag primitives, and common errors. Resource
-operations live in packages split by Neutron collection:
-
-- `network`, `subnet`, `subnetpool`, `port`, `router`, and `floatingip`;
-- `addressscope` and `rbacpolicy`;
-- `securitygroup`, including security-group rules;
-- `firewallgroup`, `firewallpolicy`, and `firewallrule`.
-
-A separate package is introduced when a resource has its own collection and
-public model. Nested actions that only mutate their parent remain with the
-parent package, such as router interfaces and firewall-policy rule actions.
-
-`addressscope` and `rbacpolicy` operations are restricted by Selectel policy to
-the project owner. The RBAC-policy collection does not provide pagination, so
-its `List` operation performs one request rather than page traversal.
+operations live in packages split by collection.
 
 ## Errors
 
@@ -54,7 +41,7 @@ failure. The SDK does not try to infer whether the resource is blocked and
 does not issue a diagnostic read after a failed write.
 
 Important: a not-found class returned by update or delete may be a policy
-failure masked by Neutron and does not prove that the resource is absent.
+failure masked by VPC API and does not prove that the resource is absent.
 Inspect the preserved HTTP status, API error type, message, and raw body when
 deciding whether a retry or reconciliation is safe.
 
@@ -65,18 +52,22 @@ Every public import path includes an explicit version segment such as
 versioned package `pkg/vN`; it is not made by breaking the existing package.
 Module releases use SemVer tags.
 
-## Regional extensions and intentional boundaries
+## Development
 
-Neutron extensions can differ between Selectel regions. The SDK sends the
-requested operation and returns the region's API error; it does not maintain a
-local availability table or reject an extension call in advance.
+Run the tests:
 
-The SDK intentionally excludes:
+```sh
+make test
+```
 
-- administrative operations;
-- the bmnet device API;
-- trunk resources;
-- atomic router-route operations.
+Run the linters configured in `.golangci.yml` with:
 
-The module covers Neutron only. Selectel Resell API operations remain in
-`go-selvpcclient`, which can be used alongside this module.
+```sh
+make lint
+```
+
+Run all local checks with:
+
+```sh
+make check
+```
