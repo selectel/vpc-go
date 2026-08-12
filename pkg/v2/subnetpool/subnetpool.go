@@ -68,7 +68,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Su
 		struct {
 			SubnetPool CreateRequest `json:"subnetpool"`
 		}{SubnetPool: request},
-		&result, api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		&result, http.StatusCreated,
 	)
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Su
 func Get(ctx context.Context, client *vpc.Client, subnetPoolID string) (*SubnetPool, error) {
 	var result envelope
 	err := api.Request(ctx, client, http.MethodGet, resourcePath(subnetPoolID), nil, nil, &result,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func Update(
 		struct {
 			SubnetPool UpdateRequest `json:"subnetpool"`
 		}{SubnetPool: request},
-		&result, api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		&result, http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func Update(
 
 func Delete(ctx context.Context, client *vpc.Client, subnetPoolID string) error {
 	return api.Request(ctx, client, http.MethodDelete, resourcePath(subnetPoolID), nil, nil, nil,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
+		http.StatusNoContent,
 	)
 }
 
@@ -117,15 +117,15 @@ func List(
 	client *vpc.Client,
 	options vpc.ListOptions,
 ) ([]SubnetPool, error) {
-	return vpc.WalkPages(ctx, options.Values(), func(
+	return api.WalkPages(ctx, options.Values(), func(
 		ctx context.Context,
 		query url.Values,
-	) (vpc.Page[SubnetPool], error) {
+	) (api.Page[SubnetPool], error) {
 		var result listEnvelope
 		err := api.Request(ctx, client, http.MethodGet, collectionPath, query, nil, &result,
-			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			http.StatusOK,
 		)
-		return vpc.Page[SubnetPool]{
+		return api.Page[SubnetPool]{
 			Items: result.SubnetPools, NextLink: api.NextPageLink(result.Links),
 		}, err
 	})

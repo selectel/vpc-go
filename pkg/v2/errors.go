@@ -11,8 +11,6 @@ const (
 	ErrorClassForbidden          = api.ErrorClassForbidden
 	ErrorClassNotFound           = api.ErrorClassNotFound
 	ErrorClassConflict           = api.ErrorClassConflict
-	ErrorClassQuotaExceeded      = api.ErrorClassQuotaExceeded
-	ErrorClassAddressUnavailable = api.ErrorClassAddressUnavailable
 	ErrorClassServer             = api.ErrorClassServer
 	ErrorClassUnexpectedResponse = api.ErrorClassUnexpectedResponse
 	ErrorClassUnclassified       = api.ErrorClassUnclassified

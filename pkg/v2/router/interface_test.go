@@ -2,25 +2,25 @@ package router
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/selectel/vpc-go/internal/testutil"
-	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
-func TestRouterInterfaceSelectorsAndPaths(t *testing.T) {
+func TestRouterInterfaceRequestsAndPaths(t *testing.T) {
 	result := `{"id":"router","port_id":"port","subnet_id":"subnet","network_id":"network"}`
 	client, transport := newClient(t, response(200, result), response(200, result))
 
-	added, err := AddInterface(context.Background(), client, "router", BySubnet("subnet"))
+	added, err := AddInterface(context.Background(), client, "router", InterfaceRequest{SubnetID: "subnet"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if added.PortID != "port" || added.NetworkID != "network" {
 		t.Fatalf("result=%+v", added)
 	}
-	if _, err := RemoveInterface(context.Background(), client, "router", ByPort("port")); err != nil {
+	if _, err := RemoveInterface(
+		context.Background(), client, "router", InterfaceRequest{PortID: "port"},
+	); err != nil {
 		t.Fatal(err)
 	}
 
@@ -30,21 +30,6 @@ func TestRouterInterfaceSelectorsAndPaths(t *testing.T) {
 	}
 	testutil.AssertJSONBody(t, transport.Requests[0], `{"subnet_id":"subnet"}`)
 	testutil.AssertJSONBody(t, transport.Requests[1], `{"port_id":"port"}`)
-}
-
-func TestRouterInterfaceRejectsInvalidSelectorWithoutHTTP(t *testing.T) {
-	client, transport := newClient(t)
-	var typedNil *subnetSelector
-	for _, selector := range []InterfaceSelector{nil, typedNil, BySubnet(""), ByPort("")} {
-		_, err := AddInterface(context.Background(), client, "router", selector)
-		var clientErr *vpc.ClientError
-		if !errors.As(err, &clientErr) {
-			t.Fatalf("selector %#v error=%v, want ClientError", selector, err)
-		}
-	}
-	if len(transport.Requests) != 0 {
-		t.Fatalf("requests=%d, want 0", len(transport.Requests))
-	}
 }
 
 func TestRouterRoutesReplaceAndOmit(t *testing.T) {

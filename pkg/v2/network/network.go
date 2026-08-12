@@ -76,7 +76,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Ne
 			Network CreateRequest `json:"network"`
 		}{Network: request},
 		&envelope,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		http.StatusCreated,
 	)
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func Get(ctx context.Context, client *vpc.Client, networkID string) (*Network, e
 		nil,
 		nil,
 		&envelope,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func Update(
 			Network UpdateRequest `json:"network"`
 		}{Network: request},
 		&envelope,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func Delete(ctx context.Context, client *vpc.Client, networkID string) error {
 		nil,
 		nil,
 		nil,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
+		http.StatusNoContent,
 	)
 }
 
@@ -143,10 +143,10 @@ func List(
 	client *vpc.Client,
 	options vpc.ListOptions,
 ) ([]Network, error) {
-	return vpc.WalkPages(ctx, options.Values(), func(
+	return api.WalkPages(ctx, options.Values(), func(
 		ctx context.Context,
 		query url.Values,
-	) (vpc.Page[Network], error) {
+	) (api.Page[Network], error) {
 		var envelope listEnvelope
 		err := api.Request(ctx, client,
 			http.MethodGet,
@@ -154,9 +154,9 @@ func List(
 			query,
 			nil,
 			&envelope,
-			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			http.StatusOK,
 		)
-		return vpc.Page[Network]{
+		return api.Page[Network]{
 			Items:    envelope.Networks,
 			NextLink: api.NextPageLink(envelope.Links),
 		}, err

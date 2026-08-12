@@ -15,10 +15,9 @@
 //
 // # Errors
 //
-// ClientError, TransportError, UnexpectedResponseError, IncompleteListError,
-// and APIError distinguish failure sources. IsErrorClass classifies API
-// failures. APIError preserves the HTTP status, API error type, message, and
-// raw response.
+// ClientError, TransportError, UnexpectedResponseError, and APIError
+// distinguish failure sources. IsErrorClass classifies API failures. APIError
+// preserves the HTTP status, API error type, message, and raw response.
 //
 // # Versioning
 //

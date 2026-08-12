@@ -23,7 +23,7 @@ func NewTagOperations(client *Client, collection, resourceID string) TagOperatio
 func (operations TagOperations) Get(ctx context.Context) ([]string, error) {
 	var envelope tagsEnvelope
 	err := Request(ctx, operations.client, http.MethodGet, operations.path(), nil, nil,
-		&envelope, RequestOptions{ExpectedStatus: []int{http.StatusOK}})
+		&envelope, http.StatusOK)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (operations TagOperations) Get(ctx context.Context) ([]string, error) {
 
 func (operations TagOperations) Has(ctx context.Context, tag string) (bool, error) {
 	err := Request(ctx, operations.client, http.MethodGet, operations.tagPath(tag), nil, nil,
-		nil, RequestOptions{ExpectedStatus: []int{http.StatusNoContent}})
+		nil, http.StatusNoContent)
 	if err == nil {
 		return true, nil
 	}
@@ -46,18 +46,18 @@ func (operations TagOperations) Has(ctx context.Context, tag string) (bool, erro
 
 func (operations TagOperations) Add(ctx context.Context, tag string) error {
 	return Request(ctx, operations.client, http.MethodPut, operations.tagPath(tag), nil, nil,
-		nil, RequestOptions{ExpectedStatus: []int{http.StatusCreated, http.StatusNoContent}})
+		nil, http.StatusCreated, http.StatusNoContent)
 }
 
 func (operations TagOperations) Delete(ctx context.Context, tag string) error {
 	return Request(ctx, operations.client, http.MethodDelete, operations.tagPath(tag), nil, nil,
-		nil, RequestOptions{ExpectedStatus: []int{http.StatusNoContent}})
+		nil, http.StatusNoContent)
 }
 
 func (operations TagOperations) Replace(ctx context.Context, tags []string) ([]string, error) {
 	var envelope tagsEnvelope
 	err := Request(ctx, operations.client, http.MethodPut, operations.path(), nil,
-		tagsEnvelope{Tags: tags}, &envelope, RequestOptions{ExpectedStatus: []int{http.StatusOK}})
+		tagsEnvelope{Tags: tags}, &envelope, http.StatusOK)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (operations TagOperations) Replace(ctx context.Context, tags []string) ([]s
 
 func (operations TagOperations) DeleteAll(ctx context.Context) error {
 	return Request(ctx, operations.client, http.MethodDelete, operations.path(), nil, nil,
-		nil, RequestOptions{ExpectedStatus: []int{http.StatusNoContent}})
+		nil, http.StatusNoContent)
 }
 
 func (operations TagOperations) path() string {

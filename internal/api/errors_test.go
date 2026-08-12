@@ -34,7 +34,7 @@ func TestErrorSourcesAreDistinct(t *testing.T) {
 		apiErr.Detail != "network id" {
 		t.Fatalf("APIError fields = %+v", apiErr)
 	}
-	if string(apiErr.Raw()) == "" {
+	if len(apiErr.RawBody) == 0 {
 		t.Fatal("APIError did not preserve raw body")
 	}
 }
@@ -51,9 +51,6 @@ func TestErrorClasses(t *testing.T) {
 		{"forbidden", 403, "PolicyNotAuthorized", ErrorClassForbidden},
 		{"not found", 404, "NetworkNotFound", ErrorClassNotFound},
 		{"conflict", 409, "NetworkInUse", ErrorClassConflict},
-		{"quota", 409, "OverQuota", ErrorClassQuotaExceeded},
-		{"address", 409, "IpAddressGenerationFailure", ErrorClassAddressUnavailable},
-		{"external address", 400, "ExternalIpAddressExhausted", ErrorClassAddressUnavailable},
 		{"server", 503, "ServiceUnavailable", ErrorClassServer},
 	}
 
@@ -95,7 +92,7 @@ func TestRequestPreservesAPIError(t *testing.T) {
 		nil,
 		map[string]any{"network": map[string]string{"name": "new"}},
 		nil,
-		RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if !IsErrorClass(err, ErrorClassForbidden) {
 		t.Fatalf("Request() error = %v, want forbidden class", err)
@@ -133,48 +130,10 @@ func TestErrorUnexpectedResponse(t *testing.T) {
 		nil,
 		nil,
 		&target,
-		RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if !IsErrorClass(err, ErrorClassUnexpectedResponse) {
 		t.Fatalf("Request() error = %v, want unexpected response class", err)
-	}
-}
-
-func TestErrorUnexpectedResourceEnvelope(t *testing.T) {
-	for _, body := range []string{
-		`{}`,
-		`null`,
-		`{"network":null}`,
-		`{"network":{}}`,
-	} {
-		t.Run(body, func(t *testing.T) {
-			httpClient := &recordingHTTPClient{
-				do: func(*http.Request) (*http.Response, error) {
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Body:       io.NopCloser(strings.NewReader(body)),
-					}, nil
-				},
-			}
-			client, err := NewClient(Config{
-				Endpoint: "https://network.example.test", Token: "token", HTTPClient: httpClient,
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			var target struct {
-				Network struct {
-					ID string `json:"id"`
-				} `json:"network"`
-			}
-			err = Request(
-				context.Background(), client, http.MethodGet, "/v2.0/networks/id",
-				nil, nil, &target, RequestOptions{ExpectedStatus: []int{http.StatusOK}},
-			)
-			if !IsErrorClass(err, ErrorClassUnexpectedResponse) {
-				t.Fatalf("Request() error = %v, want unexpected response", err)
-			}
-		})
 	}
 }
 
@@ -201,7 +160,7 @@ func TestRequestWrapsTransportError(t *testing.T) {
 		nil,
 		map[string]any{"network": map[string]string{"name": "new"}},
 		nil,
-		RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		http.StatusCreated,
 	)
 	var transportErr *TransportError
 	if !errors.As(err, &transportErr) || !errors.Is(err, connectionErr) {

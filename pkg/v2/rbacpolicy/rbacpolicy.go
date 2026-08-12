@@ -48,7 +48,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Po
 		struct {
 			Policy CreateRequest `json:"rbac_policy"`
 		}{Policy: request},
-		&result, api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		&result, http.StatusCreated,
 	)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Po
 func Get(ctx context.Context, client *vpc.Client, id string) (*Policy, error) {
 	var result envelope
 	err := api.Request(ctx, client, http.MethodGet, resourcePath(id), nil, nil, &result,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func Update(
 		struct {
 			Policy UpdateRequest `json:"rbac_policy"`
 		}{Policy: request},
-		&result, api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		&result, http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func Update(
 
 func Delete(ctx context.Context, client *vpc.Client, id string) error {
 	return api.Request(ctx, client, http.MethodDelete, resourcePath(id), nil, nil, nil,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
+		http.StatusNoContent,
 	)
 }
 
@@ -100,7 +100,7 @@ func List(
 ) ([]Policy, error) {
 	var result listEnvelope
 	err := api.Request(ctx, client, http.MethodGet, collectionPath, options.Values(), nil, &result,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if err != nil {
 		return nil, err

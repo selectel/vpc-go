@@ -109,7 +109,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Po
 		struct {
 			Port CreateRequest `json:"port"`
 		}{Port: request},
-		&result, api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		&result, http.StatusCreated,
 	)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Po
 func Get(ctx context.Context, client *vpc.Client, id string) (*Port, error) {
 	var result envelope
 	err := api.Request(ctx, client, http.MethodGet, resourcePath(id), nil, nil, &result,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func Update(ctx context.Context, client *vpc.Client, id string, request UpdateRe
 		struct {
 			Port UpdateRequest `json:"port"`
 		}{Port: request},
-		&result, api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		&result, http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -144,19 +144,19 @@ func Update(ctx context.Context, client *vpc.Client, id string, request UpdateRe
 
 func Delete(ctx context.Context, client *vpc.Client, id string) error {
 	return api.Request(ctx, client, http.MethodDelete, resourcePath(id), nil, nil, nil,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
+		http.StatusNoContent,
 	)
 }
 
 func List(ctx context.Context, client *vpc.Client, options vpc.ListOptions) ([]Port, error) {
-	return vpc.WalkPages(ctx, options.Values(), func(
+	return api.WalkPages(ctx, options.Values(), func(
 		ctx context.Context, query url.Values,
-	) (vpc.Page[Port], error) {
+	) (api.Page[Port], error) {
 		var result listEnvelope
 		err := api.Request(ctx, client, http.MethodGet, collectionPath, query, nil, &result,
-			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			http.StatusOK,
 		)
-		return vpc.Page[Port]{Items: result.Ports, NextLink: api.NextPageLink(result.Links)}, err
+		return api.Page[Port]{Items: result.Ports, NextLink: api.NextPageLink(result.Links)}, err
 	})
 }
 

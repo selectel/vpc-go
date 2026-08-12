@@ -47,16 +47,16 @@ func List(
 	client *vpc.Client,
 	options vpc.ListOptions,
 ) ([]AvailabilityZone, error) {
-	return vpc.WalkPages(ctx, options.Values(), func(
+	return api.WalkPages(ctx, options.Values(), func(
 		ctx context.Context,
 		query url.Values,
-	) (vpc.Page[AvailabilityZone], error) {
+	) (api.Page[AvailabilityZone], error) {
 		var result listEnvelope
 		err := api.Request(ctx, client, http.MethodGet, collectionPath, query, nil, &result,
-			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			http.StatusOK,
 		)
 
-		return vpc.Page[AvailabilityZone]{
+		return api.Page[AvailabilityZone]{
 			Items: result.AvailabilityZones, NextLink: api.NextPageLink(result.Links),
 		}, err
 	})

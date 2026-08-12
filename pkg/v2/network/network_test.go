@@ -132,8 +132,8 @@ func TestNetworkListIncomplete(t *testing.T) {
 	if networks != nil {
 		t.Fatalf("networks = %+v, want nil", networks)
 	}
-	if !vpc.IsIncompleteList(err) || !errors.Is(err, connectionErr) {
-		t.Fatalf("List() error = %v, want incomplete list", err)
+	if !errors.Is(err, connectionErr) {
+		t.Fatalf("List() error = %v, want connection error", err)
 	}
 }
 

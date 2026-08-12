@@ -58,8 +58,8 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Fl
 	err := api.Request(ctx, client, http.MethodPost, collectionPath, nil,
 		struct {
 			FloatingIP CreateRequest `json:"floatingip"`
-		}{request}, &result,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}})
+		}{FloatingIP: request}, &result,
+		http.StatusCreated)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Fl
 func Get(ctx context.Context, client *vpc.Client, id string) (*FloatingIP, error) {
 	var result envelope
 	err := api.Request(ctx, client, http.MethodGet, resourcePath(id), nil, nil, &result,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}})
+		http.StatusOK)
 	if err != nil {
 		return nil, err
 	}
@@ -81,8 +81,8 @@ func Update(ctx context.Context, client *vpc.Client, id string, request UpdateRe
 	err := api.Request(ctx, client, http.MethodPut, resourcePath(id), nil,
 		struct {
 			FloatingIP UpdateRequest `json:"floatingip"`
-		}{request}, &result,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}})
+		}{FloatingIP: request}, &result,
+		http.StatusOK)
 	if err != nil {
 		return nil, err
 	}
@@ -91,14 +91,14 @@ func Update(ctx context.Context, client *vpc.Client, id string, request UpdateRe
 
 func Delete(ctx context.Context, client *vpc.Client, id string) error {
 	return api.Request(ctx, client, http.MethodDelete, resourcePath(id), nil, nil, nil,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}})
+		http.StatusNoContent)
 }
 
 func List(ctx context.Context, client *vpc.Client, options vpc.ListOptions) ([]FloatingIP, error) {
-	return vpc.WalkPages(ctx, options.Values(), func(ctx context.Context, q url.Values) (vpc.Page[FloatingIP], error) {
+	return api.WalkPages(ctx, options.Values(), func(ctx context.Context, q url.Values) (api.Page[FloatingIP], error) {
 		var result listEnvelope
-		err := api.Request(ctx, client, http.MethodGet, collectionPath, q, nil, &result, api.RequestOptions{ExpectedStatus: []int{http.StatusOK}})
-		return vpc.Page[FloatingIP]{Items: result.FloatingIPs, NextLink: api.NextPageLink(result.Links)}, err
+		err := api.Request(ctx, client, http.MethodGet, collectionPath, q, nil, &result, http.StatusOK)
+		return api.Page[FloatingIP]{Items: result.FloatingIPs, NextLink: api.NextPageLink(result.Links)}, err
 	})
 }
 

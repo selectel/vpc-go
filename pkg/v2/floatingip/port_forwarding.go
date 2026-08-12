@@ -67,7 +67,7 @@ func CreatePortForwarding(
 			PortForwarding PortForwardingCreateRequest `json:"port_forwarding"`
 		}{PortForwarding: request},
 		&envelope,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		http.StatusCreated,
 	)
 	if err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func GetPortForwarding(
 		nil,
 		nil,
 		&envelope,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func UpdatePortForwarding(
 			PortForwarding PortForwardingUpdateRequest `json:"port_forwarding"`
 		}{PortForwarding: request},
 		&envelope,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func DeletePortForwarding(
 		nil,
 		nil,
 		nil,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
+		http.StatusNoContent,
 	)
 }
 
@@ -146,10 +146,10 @@ func ListPortForwardings(
 	floatingIPID string,
 	options vpc.ListOptions,
 ) ([]PortForwarding, error) {
-	return vpc.WalkPages(ctx, options.Values(), func(
+	return api.WalkPages(ctx, options.Values(), func(
 		ctx context.Context,
 		query url.Values,
-	) (vpc.Page[PortForwarding], error) {
+	) (api.Page[PortForwarding], error) {
 		var envelope portForwardingListEnvelope
 		err := api.Request(ctx, client,
 			http.MethodGet,
@@ -157,9 +157,9 @@ func ListPortForwardings(
 			query,
 			nil,
 			&envelope,
-			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			http.StatusOK,
 		)
-		return vpc.Page[PortForwarding]{
+		return api.Page[PortForwarding]{
 			Items:    envelope.PortForwardings,
 			NextLink: api.NextPageLink(envelope.Links),
 		}, err

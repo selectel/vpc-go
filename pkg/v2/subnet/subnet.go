@@ -56,7 +56,7 @@ type CreateRequest struct {
 	Description     *string               `json:"description,omitempty"`
 	GatewayIP       *vpc.Optional[string] `json:"gateway_ip,omitempty"`
 	AllocationPools *[]AllocationPool     `json:"allocation_pools,omitempty"`
-	DNSNameservers  *[]string             `json:"dns_nameservers,omitempty"` // default 188.93.16.19, 188.93.17.19?
+	DNSNameservers  *[]string             `json:"dns_nameservers,omitempty"`
 	HostRoutes      *[]HostRoute          `json:"host_routes,omitempty"`
 	EnableDHCP      *bool                 `json:"enable_dhcp,omitempty"`
 	IPv6RAMode      *string               `json:"ipv6_ra_mode,omitempty"`
@@ -91,7 +91,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Su
 			Subnet CreateRequest `json:"subnet"`
 		}{Subnet: request},
 		&result,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		http.StatusCreated,
 	)
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Su
 func Get(ctx context.Context, client *vpc.Client, subnetID string) (*Subnet, error) {
 	var result envelope
 	err := api.Request(ctx, client, http.MethodGet, resourcePath(subnetID), nil, nil, &result,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -122,7 +122,7 @@ func Update(
 			Subnet UpdateRequest `json:"subnet"`
 		}{Subnet: request},
 		&result,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -132,7 +132,7 @@ func Update(
 
 func Delete(ctx context.Context, client *vpc.Client, subnetID string) error {
 	return api.Request(ctx, client, http.MethodDelete, resourcePath(subnetID), nil, nil, nil,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
+		http.StatusNoContent,
 	)
 }
 
@@ -141,15 +141,15 @@ func List(
 	client *vpc.Client,
 	options vpc.ListOptions,
 ) ([]Subnet, error) {
-	return vpc.WalkPages(ctx, options.Values(), func(
+	return api.WalkPages(ctx, options.Values(), func(
 		ctx context.Context,
 		query url.Values,
-	) (vpc.Page[Subnet], error) {
+	) (api.Page[Subnet], error) {
 		var result listEnvelope
 		err := api.Request(ctx, client, http.MethodGet, collectionPath, query, nil, &result,
-			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			http.StatusOK,
 		)
-		return vpc.Page[Subnet]{
+		return api.Page[Subnet]{
 			Items:    result.Subnets,
 			NextLink: api.NextPageLink(result.Links),
 		}, err

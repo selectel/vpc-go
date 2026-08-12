@@ -9,43 +9,24 @@ import (
 	"github.com/selectel/vpc-go/internal/api"
 
 	vpc "github.com/selectel/vpc-go/pkg/v2"
+	"github.com/selectel/vpc-go/pkg/v2/securitygrouprule"
 )
 
 const collectionPath = "/v2.0/security-groups"
 
 // SecurityGroup represents a security group.
 type SecurityGroup struct {
-	ID                 string              `json:"id"`
-	Name               string              `json:"name"`
-	Description        string              `json:"description"`
-	Stateful           bool                `json:"stateful"`
-	Shared             bool                `json:"shared"`
-	SecurityGroupRules []SecurityGroupRule `json:"security_group_rules"`
-	ProjectID          string              `json:"project_id"`
-	RevisionNumber     int                 `json:"revision_number"`
-	CreatedAt          string              `json:"created_at"`
-	UpdatedAt          string              `json:"updated_at"`
-	Tags               []string            `json:"tags"`
-}
-
-// SecurityGroupRule is an observable rule embedded in a security group.
-//
-//nolint:revive // The explicit name avoids ambiguity with rules from other resource packages.
-type SecurityGroupRule struct {
-	ID              string  `json:"id"`
-	SecurityGroupID string  `json:"security_group_id"`
-	Direction       string  `json:"direction"`
-	EtherType       string  `json:"ethertype"`
-	Protocol        *string `json:"protocol"`
-	PortRangeMin    *int    `json:"port_range_min"`
-	PortRangeMax    *int    `json:"port_range_max"`
-	RemoteIPPrefix  *string `json:"remote_ip_prefix"`
-	RemoteGroupID   *string `json:"remote_group_id"`
-	Description     string  `json:"description"`
-	ProjectID       string  `json:"project_id"`
-	RevisionNumber  int     `json:"revision_number"`
-	CreatedAt       string  `json:"created_at"`
-	UpdatedAt       string  `json:"updated_at"`
+	ID                 string                   `json:"id"`
+	Name               string                   `json:"name"`
+	Description        string                   `json:"description"`
+	Stateful           bool                     `json:"stateful"`
+	Shared             bool                     `json:"shared"`
+	SecurityGroupRules []securitygrouprule.Rule `json:"security_group_rules"`
+	ProjectID          string                   `json:"project_id"`
+	RevisionNumber     int                      `json:"revision_number"`
+	CreatedAt          string                   `json:"created_at"`
+	UpdatedAt          string                   `json:"updated_at"`
+	Tags               []string                 `json:"tags"`
 }
 
 // CreateRequest contains the caller-writable attributes of a new group.
@@ -85,7 +66,7 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Se
 			SecurityGroup CreateRequest `json:"security_group"`
 		}{SecurityGroup: request},
 		&result,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusCreated}},
+		http.StatusCreated,
 	)
 	if err != nil {
 		return nil, err
@@ -101,7 +82,7 @@ func Get(ctx context.Context, client *vpc.Client, securityGroupID string) (*Secu
 		nil,
 		nil,
 		&result,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -124,7 +105,7 @@ func Update(
 			SecurityGroup UpdateRequest `json:"security_group"`
 		}{SecurityGroup: request},
 		&result,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+		http.StatusOK,
 	)
 	if err != nil {
 		return nil, err
@@ -139,7 +120,7 @@ func Delete(ctx context.Context, client *vpc.Client, securityGroupID string) err
 		nil,
 		nil,
 		nil,
-		api.RequestOptions{ExpectedStatus: []int{http.StatusNoContent}},
+		http.StatusNoContent,
 	)
 }
 
@@ -148,10 +129,10 @@ func List(
 	client *vpc.Client,
 	options vpc.ListOptions,
 ) ([]SecurityGroup, error) {
-	return vpc.WalkPages(ctx, options.Values(), func(
+	return api.WalkPages(ctx, options.Values(), func(
 		ctx context.Context,
 		query url.Values,
-	) (vpc.Page[SecurityGroup], error) {
+	) (api.Page[SecurityGroup], error) {
 		var result listEnvelope
 		err := api.Request(ctx, client,
 			http.MethodGet,
@@ -159,9 +140,9 @@ func List(
 			query,
 			nil,
 			&result,
-			api.RequestOptions{ExpectedStatus: []int{http.StatusOK}},
+			http.StatusOK,
 		)
-		return vpc.Page[SecurityGroup]{
+		return api.Page[SecurityGroup]{
 			Items:    result.SecurityGroups,
 			NextLink: api.NextPageLink(result.Links),
 		}, err

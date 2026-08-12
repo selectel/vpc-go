@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 )
 
 type ErrorClass string
@@ -16,8 +15,6 @@ const (
 	ErrorClassForbidden          ErrorClass = "forbidden"
 	ErrorClassNotFound           ErrorClass = "not_found"
 	ErrorClassConflict           ErrorClass = "conflict"
-	ErrorClassQuotaExceeded      ErrorClass = "quota_exceeded"
-	ErrorClassAddressUnavailable ErrorClass = "address_unavailable"
 	ErrorClassServer             ErrorClass = "server"
 	ErrorClassUnexpectedResponse ErrorClass = "unexpected_response"
 	ErrorClassUnclassified       ErrorClass = "unclassified"
@@ -49,7 +46,6 @@ func (err *Error) Error() string {
 
 	return fmt.Sprintf("vpc API error (%d, %s)", err.StatusCode, err.Type)
 }
-func (err *Error) Raw() []byte { return append([]byte(nil), err.RawBody...) }
 
 type UnexpectedResponseError struct {
 	StatusCode int
@@ -61,7 +57,6 @@ func (err *UnexpectedResponseError) Error() string {
 	return fmt.Sprintf("unexpected vpc API response (%d): %v", err.StatusCode, err.Err)
 }
 func (err *UnexpectedResponseError) Unwrap() error { return err.Err }
-func (err *UnexpectedResponseError) Raw() []byte   { return append([]byte(nil), err.RawBody...) }
 
 func IsErrorClass(err error, class ErrorClass) bool {
 	var apiErr *Error
@@ -85,8 +80,10 @@ func NewAPIError(statusCode int, body []byte) *Error {
 
 	apiErr := &Error{
 		StatusCode: statusCode,
-		Type:       envelope.NeutronError.Type, Message: envelope.NeutronError.Message,
-		Detail: envelope.NeutronError.Detail, RawBody: append([]byte(nil), body...),
+		Type:       envelope.NeutronError.Type,
+		Message:    envelope.NeutronError.Message,
+		Detail:     envelope.NeutronError.Detail,
+		RawBody:    append([]byte(nil), body...),
 	}
 	apiErr.Class = classifyAPIError(apiErr)
 
@@ -94,15 +91,6 @@ func NewAPIError(statusCode int, body []byte) *Error {
 }
 
 func classifyAPIError(apiErr *Error) ErrorClass {
-	errorType := strings.ToLower(apiErr.Type)
-	switch {
-	case strings.Contains(errorType, "quota") || strings.Contains(errorType, "overquota"):
-		return ErrorClassQuotaExceeded
-	case strings.Contains(errorType, "ipaddressgenerationfailure") ||
-		strings.Contains(errorType, "addressgenerationfailure") ||
-		strings.Contains(errorType, "externalipaddressexhausted"):
-		return ErrorClassAddressUnavailable
-	}
 	switch apiErr.StatusCode {
 	case http.StatusBadRequest:
 		return ErrorClassBadRequest
