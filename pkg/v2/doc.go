@@ -1,48 +1,27 @@
-// Package v2 provides the versioned public client contract for the Selectel
-// Neutron network API.
+// Package v2 provides the versioned Go client for the Selectel VPC API,
+// compatible with the OpenStack Neutron API.
 //
-// # Access scope
+// # Client
 //
-// Callers obtain a project-scoped Keystone token and a regional network
-// endpoint and pass them to NewClient. Client does not authenticate, refresh
-// credentials, select a region, keep mutable process-global authentication
-// state, or retry unsafe requests. Every resource operation accepts a
-// context.Context, and callers may provide their own HTTP transport.
+// NewClient accepts a regional VPC endpoint, a project-scoped Keystone token,
+// and an optional HTTP client. Every resource operation accepts a
+// context.Context.
 //
 // # Resource packages
 //
-// The v2 package owns the client, selection and pagination options, optional
-// request values, common errors, and tag primitives. Packages network, subnet,
-// subnetpool, port, router, floatingip, addressscope, rbacpolicy,
-// securitygroup, firewallgroup, firewallpolicy, and firewallrule are divided
-// by Neutron resource collection. Nested actions that only mutate a parent,
-// such as router interfaces, remain in that parent's package.
-//
-// Selectel restricts addressscope and rbacpolicy operations to the project
-// owner. The RBAC-policy collection does not support pagination. Extension
-// availability can differ by region; the SDK sends the request and preserves
-// the resulting API error rather than maintaining a local availability table.
+// The v2 package contains the client, selection and pagination options,
+// optional request values, common errors, and tag primitives. Resource
+// operations are grouped into packages by resource type.
 //
 // # Errors
 //
 // ClientError, TransportError, UnexpectedResponseError, IncompleteListError,
 // and APIError distinguish failure sources. IsErrorClass classifies API
-// failures, including quota and address allocation failures that share an HTTP
-// status with ordinary conflicts. PolicyNotAuthorized remains a general policy
-// failure; the SDK does not issue a diagnostic read to infer whether a
-// resource is blocked.
+// failures. APIError preserves the HTTP status, API error type, message, and
+// raw response.
 //
-// A not-found class returned by update or delete may be a Neutron policy
-// failure masked as absence. It does not prove the resource is absent. APIError
-// preserves the actual status, type, message, and raw response.
+// # Versioning
 //
-// # Versioning and boundaries
-//
-// Public imports always include a version segment such as pkg/v2. An
-// incompatible public Go API change is released in a new versioned package
-// pkg/vN instead of breaking an existing package.
-//
-// This SDK intentionally excludes administrative operations, the bmnet device
-// API, trunk resources, and atomic router-route actions. It covers Neutron,
-// not the Selectel Resell API.
+// Public imports include a version segment such as pkg/v2. Incompatible public
+// Go API changes are released in a new versioned package.
 package v2

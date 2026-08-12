@@ -1,3 +1,4 @@
+// Package network provides operations for network resources.
 package network
 
 import (
@@ -12,7 +13,7 @@ import (
 
 const collectionPath = "/v2.0/networks"
 
-// Network is the observable network representation returned by Neutron.
+// Network represents a VPC network.
 type Network struct {
 	ID                    string   `json:"id"`
 	Name                  string   `json:"name"`
@@ -27,9 +28,6 @@ type Network struct {
 	PortSecurityEnabled   bool     `json:"port_security_enabled"`
 	AvailabilityZones     []string `json:"availability_zones"`
 	AvailabilityZoneHints []string `json:"availability_zone_hints"`
-	ProviderNetworkType   string   `json:"provider:network_type"`
-	ProviderPhysicalNet   *string  `json:"provider:physical_network"`
-	ProviderSegmentation  *int     `json:"provider:segmentation_id"`
 	RevisionNumber        int      `json:"revision_number"`
 	CreatedAt             string   `json:"created_at"`
 	UpdatedAt             string   `json:"updated_at"`

@@ -1,10 +1,4 @@
-// Package availabilityzone provides read access to Neutron availability zones.
-//
-// The collection is read-only: zones come from the deployment's agents, not from
-// an API call. Note that it reports the zones that EXIST, which is not the same as
-// the zones a caller may ask for — the Selectel fork restricts availability zone
-// hints of a router to the allowed_router_zones configuration, and that allowlist
-// is not exposed by any endpoint.
+// Package availabilityzone provides read access to VPC availability zones.
 package availabilityzone
 
 import (

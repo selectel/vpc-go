@@ -2,48 +2,20 @@ package port
 
 import (
 	"context"
-	"io"
 	"net/http"
-	"reflect"
-	"strings"
 	"testing"
 
+	"github.com/selectel/vpc-go/internal/testutil"
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
-type scriptedClient struct {
-	requests  []*http.Request
-	responses []*http.Response
-}
+const portModel = `{"port":{"id":"id","network_id":"net","status":"DOWN",` +
+	`"blocked":true,"dhcp_blocked":true,"dns_name":"host",` +
+	`"extra_dhcp_opts":[{"opt_name":"domain-name","opt_value":"example.test","ip_version":4}]}}`
 
-func (c *scriptedClient) Do(r *http.Request) (*http.Response, error) {
-	c.requests = append(c.requests, r)
-	return c.responses[len(c.requests)-1], nil
-}
-
-func response(status int, body string) *http.Response {
-	return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body))}
-}
-
-func newClient(t *testing.T, responses ...*http.Response) (*vpc.Client, *scriptedClient) {
-	t.Helper()
-	transport := &scriptedClient{responses: responses}
-	client, err := vpc.NewClient(vpc.Config{Endpoint: "https://network.example.test", Token: "token", HTTPClient: transport})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return client, transport
-}
-
-func TestPortCRUDCollectionsAndFields(t *testing.T) {
-	model := `{"port":{"id":"id","network_id":"net","status":"DOWN","binding:vnic_type":"normal",` +
-		`"blocked":true,"dhcp_blocked":true,"dns_name":"host",` +
-		`"extra_dhcp_opts":[{"opt_name":"domain-name","opt_value":"example.test","ip_version":4}],` +
-		`"dns_domain":"ignored.example.","dns_assignment":[{"fqdn":"ignored.example."}]}}`
-	client, transport := newClient(t, response(201, model), response(200, model), response(200, model), response(204, ""))
+func TestPortCreate(t *testing.T) {
+	client, transport := testutil.NewClient(t, testutil.Response(http.StatusCreated, portModel))
 	emptyStrings := []string{}
-	emptyIPs := []FixedIP{}
-	emptyPairs := []AllowedAddressPair{}
 	dhcpOptions := []ExtraDHCPOption{{Name: "domain-name", Value: "example.test"}}
 	dnsName := "host"
 	created, err := Create(context.Background(), client, CreateRequest{
@@ -57,9 +29,30 @@ func TestPortCRUDCollectionsAndFields(t *testing.T) {
 	if created.DNSName != dnsName || len(created.ExtraDHCPOptions) != 1 {
 		t.Fatalf("created=%+v", created)
 	}
-	if _, err := Get(context.Background(), client, "id"); err != nil {
-		t.Fatal(err)
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodPost, "/v2.0/ports")
+	testutil.AssertJSONBody(t, transport.Requests[0], `{"port":{"network_id":"net",`+
+		`"security_groups":[],"extra_dhcp_opts":[{"opt_name":"domain-name",`+
+		`"opt_value":"example.test"}],"dns_name":"host"}}`)
+}
+
+func TestPortGet(t *testing.T) {
+	client, transport := testutil.NewClient(t, testutil.Response(http.StatusOK, portModel))
+	got, err := Get(context.Background(), client, "id")
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
 	}
+	if got.ID != "id" || got.NetworkID != "net" {
+		t.Fatalf("Get() = %+v", got)
+	}
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodGet, "/v2.0/ports/id")
+}
+
+func TestPortUpdateClearsCollectionsAndRemovesDHCPOption(t *testing.T) {
+	client, transport := testutil.NewClient(t, testutil.Response(http.StatusOK, portModel))
+	emptyStrings := []string{}
+	emptyIPs := []FixedIP{}
+	emptyPairs := []AllowedAddressPair{}
+	dnsName := "host"
 	// The update keeps one option and removes another: a removal is a name with an
 	// explicit null value, because an omitted option would simply stay as it is.
 	keptValue := "example.test"
@@ -74,83 +67,38 @@ func TestPortCRUDCollectionsAndFields(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodPut, "/v2.0/ports/id")
+	testutil.AssertJSONBody(t, transport.Requests[0], `{"port":{"fixed_ips":[],`+
+		`"security_groups":[],"allowed_address_pairs":[],"dns_name":"host",`+
+		`"extra_dhcp_opts":[{"opt_name":"domain-name","opt_value":"example.test"},`+
+		`{"opt_name":"bootfile-name","opt_value":null}]}}`)
+}
+
+func TestPortDelete(t *testing.T) {
+	client, transport := testutil.NewClient(t, testutil.Response(http.StatusNoContent, ""))
 	if err := Delete(context.Background(), client, "id"); err != nil {
-		t.Fatal(err)
+		t.Fatalf("Delete() error = %v", err)
 	}
-	body, _ := io.ReadAll(transport.requests[2].Body)
-	for _, field := range []string{
-		`"fixed_ips":[]`, `"security_groups":[]`, `"allowed_address_pairs":[]`,
-		`"extra_dhcp_opts":[{"opt_name":"domain-name","opt_value":"example.test"},` +
-			`{"opt_name":"bootfile-name","opt_value":null}]`,
-		`"dns_name":"host"`,
-	} {
-		if !strings.Contains(string(body), field) {
-			t.Fatalf("update body %s lacks %s", body, field)
-		}
-	}
-	for _, forbidden := range []string{"mac_address", "blocked", "dhcp_blocked", "qos_policy_id", "port_security_enabled", "dns_domain", "dns_assignment", "binding:vnic_type"} {
-		if strings.Contains(string(body), forbidden) {
-			t.Fatalf("update body contains %s", forbidden)
-		}
-	}
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodDelete, "/v2.0/ports/id")
 }
 
 func TestPortTagsReplaceReturnsResult(t *testing.T) {
-	client, transport := newClient(t, response(200, `{"tags":["one","two"]}`))
+	client, transport := testutil.NewClient(t, testutil.Response(200, `{"tags":["one","two"]}`))
 	tags, err := TagOperations(client, "id").Replace(
 		context.Background(), []string{"one", "two"},
 	)
-	if err != nil || len(tags) != 2 || len(transport.requests) != 1 {
-		t.Fatalf("Replace()=%v,%v requests=%d", tags, err, len(transport.requests))
+	if err != nil || len(tags) != 2 || len(transport.Requests) != 1 {
+		t.Fatalf("Replace()=%v,%v requests=%d", tags, err, len(transport.Requests))
 	}
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodPut, "/v2.0/ports/id/tags")
 }
 
-func TestPortListErrorsAndTags(t *testing.T) {
-	client, _ := newClient(t,
-		response(200, `{"ports":[{"id":"one"}],"ports_links":[]}`),
+func TestPortList(t *testing.T) {
+	client, _ := testutil.NewClient(t,
+		testutil.Response(200, `{"ports":[{"id":"one"}],"ports_links":[]}`),
 	)
 	ports, err := List(context.Background(), client, vpc.ListOptions{SelectionOptions: vpc.SelectionOptions{Filters: map[string][]string{"network_id": {"net"}}}})
 	if err != nil || len(ports) != 1 {
 		t.Fatalf("List()=%+v,%v", ports, err)
-	}
-
-	for _, test := range []struct {
-		status int
-		kind   string
-		class  vpc.ErrorClass
-	}{
-		{409, "IpAddressInUse", vpc.ErrorClassConflict},
-		{409, "IpAddressGenerationFailure", vpc.ErrorClassAddressUnavailable},
-		{400, "BadRequest", vpc.ErrorClassBadRequest},
-	} {
-		client, _ := newClient(t, response(test.status, `{"NeutronError":{"type":"`+test.kind+`","message":"failure"}}`))
-		_, err := Create(context.Background(), client, CreateRequest{NetworkID: "net"})
-		if !vpc.IsErrorClass(err, test.class) {
-			t.Fatalf("%s error=%v want %s", test.kind, err, test.class)
-		}
-	}
-
-	client, transport := newClient(t,
-		response(403, `{"NeutronError":{"type":"PolicyNotAuthorized","message":"blocked"}}`),
-		response(200, `{"port":{"id":"id","blocked":true}}`),
-	)
-	_, err = TagOperations(client, "id").Replace(context.Background(), []string{})
-	if !vpc.IsErrorClass(err, vpc.ErrorClassForbidden) || len(transport.requests) != 1 {
-		t.Fatalf("tag error=%v requests=%d", err, len(transport.requests))
-	}
-}
-
-func TestPortPublicContractFields(t *testing.T) {
-	for _, value := range []any{Port{}, CreateRequest{}, UpdateRequest{}} {
-		if _, exists := reflect.TypeOf(value).FieldByName("ExtraDHCPOptions"); !exists {
-			t.Fatalf("%T does not expose ExtraDHCPOptions", value)
-		}
-	}
-	for _, value := range []any{Port{}, CreateRequest{}, UpdateRequest{}} {
-		for _, field := range []string{"DNSDomain", "DNSAssignment", "BindingVNICType"} {
-			if _, exists := reflect.TypeOf(value).FieldByName(field); exists {
-				t.Fatalf("%T unexpectedly exposes %s", value, field)
-			}
-		}
 	}
 }

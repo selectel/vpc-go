@@ -1,6 +1,4 @@
-// Package rbacpolicy provides owner-scoped operations for Neutron RBAC policies.
-//
-// List is intentionally non-paginated because the RBAC API ignores pagination.
+// Package rbacpolicy provides operations for RBAC policy resources.
 package rbacpolicy
 
 import (
@@ -94,7 +92,7 @@ func Delete(ctx context.Context, client *vpc.Client, id string) error {
 	)
 }
 
-// List reads the RBAC collection in one response without limit or marker.
+// List reads the RBAC policy collection.
 func List(
 	ctx context.Context,
 	client *vpc.Client,

@@ -1,16 +1,14 @@
 # vpc-go
 
-`vpc-go` is a typed Go SDK for the Selectel VPC network API compatible with Openstack Neutron API.
+`vpc-go` is a typed Go SDK for the Selectel VPC API, compatible with the
+OpenStack Neutron API.
 Its public API is versioned by the network API generation and is imported from
 `github.com/selectel/vpc-go/pkg/v2`.
 
 ## Access scope and authentication
 
-The caller obtains a project-scoped Keystone token and the network endpoint
-for the required region, then passes both to `v2.NewClient`. The client uses
-only that endpoint and token. It does not authenticate with Keystone, select a
-region, refresh credentials, keep process-global authentication state, or
-silently retry unsafe requests. Every operation accepts `context.Context`.
+The caller passes a project-scoped Keystone token and the VPC endpoint for the
+required region to `v2.NewClient`. Every operation accepts `context.Context`.
 
 ```go
 client, err := vpc.NewClient(vpc.Config{
@@ -36,14 +34,9 @@ traversal, and API failures. `vpc.IsErrorClass` classifies API failures such as
 bad requests, authentication and authorization failures, not found, conflict,
 quota exceeded, address unavailable, and server errors.
 
-`PolicyNotAuthorized` is returned as a general authorization or policy
-failure. The SDK does not try to infer whether the resource is blocked and
-does not issue a diagnostic read after a failed write.
-
-Important: a not-found class returned by update or delete may be a policy
-failure masked by VPC API and does not prove that the resource is absent.
-Inspect the preserved HTTP status, API error type, message, and raw body when
-deciding whether a retry or reconciliation is safe.
+An authorization failure can be returned by the VPC API as not found. Inspect
+the preserved HTTP status, API error type, message, and raw body when deciding
+whether a retry or reconciliation is safe.
 
 ## Versioning
 

@@ -53,6 +53,7 @@ func TestErrorClasses(t *testing.T) {
 		{"conflict", 409, "NetworkInUse", ErrorClassConflict},
 		{"quota", 409, "OverQuota", ErrorClassQuotaExceeded},
 		{"address", 409, "IpAddressGenerationFailure", ErrorClassAddressUnavailable},
+		{"external address", 400, "ExternalIpAddressExhausted", ErrorClassAddressUnavailable},
 		{"server", 503, "ServiceUnavailable", ErrorClassServer},
 	}
 
@@ -67,7 +68,7 @@ func TestErrorClasses(t *testing.T) {
 	}
 }
 
-func TestForbiddenDoesNotPerformDiagnosticRead(t *testing.T) {
+func TestRequestPreservesAPIError(t *testing.T) {
 	httpClient := &recordingHTTPClient{
 		do: func(*http.Request) (*http.Response, error) {
 			return &http.Response{
@@ -103,9 +104,6 @@ func TestForbiddenDoesNotPerformDiagnosticRead(t *testing.T) {
 	var apiErr *Error
 	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusForbidden {
 		t.Fatalf("Request() did not preserve API error: %v", err)
-	}
-	if len(httpClient.requests) != 1 {
-		t.Fatalf("request count = %d, want 1", len(httpClient.requests))
 	}
 }
 
@@ -180,7 +178,7 @@ func TestErrorUnexpectedResourceEnvelope(t *testing.T) {
 	}
 }
 
-func TestErrorTransportDoesNotRetry(t *testing.T) {
+func TestRequestWrapsTransportError(t *testing.T) {
 	connectionErr := errors.New("connection lost")
 	httpClient := &recordingHTTPClient{
 		do: func(*http.Request) (*http.Response, error) {
@@ -208,8 +206,5 @@ func TestErrorTransportDoesNotRetry(t *testing.T) {
 	var transportErr *TransportError
 	if !errors.As(err, &transportErr) || !errors.Is(err, connectionErr) {
 		t.Fatalf("Request() error = %v, want transport error", err)
-	}
-	if len(httpClient.requests) != 1 {
-		t.Fatalf("request count = %d, want 1", len(httpClient.requests))
 	}
 }

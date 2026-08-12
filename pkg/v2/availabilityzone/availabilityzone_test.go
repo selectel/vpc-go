@@ -2,38 +2,19 @@ package availabilityzone
 
 import (
 	"context"
-	"io"
 	"net/http"
-	"strings"
 	"testing"
 
+	"github.com/selectel/vpc-go/internal/testutil"
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
-type scriptedClient struct {
-	requests  []*http.Request
-	responses []*http.Response
-}
-
-func (client *scriptedClient) Do(request *http.Request) (*http.Response, error) {
-	client.requests = append(client.requests, request)
-	return client.responses[len(client.requests)-1], nil
-}
-
-func newClient(t *testing.T, responses ...*http.Response) (*vpc.Client, *scriptedClient) {
-	t.Helper()
-	transport := &scriptedClient{responses: responses}
-	client, err := vpc.NewClient(vpc.Config{
-		Endpoint: "https://network.example.test", Token: "token", HTTPClient: transport,
-	})
-	if err != nil {
-		t.Fatalf("NewClient() error = %v", err)
-	}
-	return client, transport
+func newClient(t *testing.T, responses ...*http.Response) (*vpc.Client, *testutil.Transport) {
+	return testutil.NewClient(t, responses...)
 }
 
 func response(status int, body string) *http.Response {
-	return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body))}
+	return testutil.Response(status, body)
 }
 
 // The same zone name appears once per resource it serves, so a caller looking for
@@ -57,7 +38,7 @@ func TestAvailabilityZoneList(t *testing.T) {
 		zones[1].State != StateAvailable {
 		t.Fatalf("zones[1] = %+v", zones[1])
 	}
-	if path := transport.requests[0].URL.Path; path != collectionPath {
+	if path := transport.Requests[0].URL.Path; path != collectionPath {
 		t.Fatalf("requested %s, want %s", path, collectionPath)
 	}
 }
@@ -74,7 +55,7 @@ func TestAvailabilityZoneListFilters(t *testing.T) {
 		t.Fatalf("List() error = %v", err)
 	}
 
-	if got := transport.requests[0].URL.Query().Get("resource"); got != ResourceRouter {
+	if got := transport.Requests[0].URL.Query().Get("resource"); got != ResourceRouter {
 		t.Fatalf("resource filter = %q, want %q", got, ResourceRouter)
 	}
 }

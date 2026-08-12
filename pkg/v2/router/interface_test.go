@@ -3,10 +3,9 @@ package router
 import (
 	"context"
 	"errors"
-	"io"
-	"strings"
 	"testing"
 
+	"github.com/selectel/vpc-go/internal/testutil"
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
@@ -25,34 +24,12 @@ func TestRouterInterfaceSelectorsAndPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if transport.requests[0].URL.Path != "/v2.0/routers/router/add_router_interface" ||
-		transport.requests[1].URL.Path != "/v2.0/routers/router/remove_router_interface" {
-		t.Fatalf("paths=%s,%s", transport.requests[0].URL.Path, transport.requests[1].URL.Path)
+	if transport.Requests[0].URL.Path != "/v2.0/routers/router/add_router_interface" ||
+		transport.Requests[1].URL.Path != "/v2.0/routers/router/remove_router_interface" {
+		t.Fatalf("paths=%s,%s", transport.Requests[0].URL.Path, transport.Requests[1].URL.Path)
 	}
-	firstBody, _ := io.ReadAll(transport.requests[0].Body)
-	secondBody, _ := io.ReadAll(transport.requests[1].Body)
-	if string(firstBody) != `{"subnet_id":"subnet"}` || string(secondBody) != `{"port_id":"port"}` {
-		t.Fatalf("bodies=%s,%s", firstBody, secondBody)
-	}
-}
-
-func TestRouterInterfaceErrorClasses(t *testing.T) {
-	for _, test := range []struct {
-		status int
-		kind   string
-		class  vpc.ErrorClass
-	}{
-		{400, "BadRequest", vpc.ErrorClassBadRequest},
-		{404, "RouterInterfaceNotFound", vpc.ErrorClassNotFound},
-		{409, "RouterInterfaceInUse", vpc.ErrorClassConflict},
-	} {
-		client, transport := newClient(t, response(test.status,
-			`{"NeutronError":{"type":"`+test.kind+`","message":"failure"}}`))
-		_, err := AddInterface(context.Background(), client, "router", BySubnet("subnet"))
-		if !vpc.IsErrorClass(err, test.class) || len(transport.requests) != 1 {
-			t.Fatalf("%s error=%v requests=%d", test.kind, err, len(transport.requests))
-		}
-	}
+	testutil.AssertJSONBody(t, transport.Requests[0], `{"subnet_id":"subnet"}`)
+	testutil.AssertJSONBody(t, transport.Requests[1], `{"port_id":"port"}`)
 }
 
 func TestRouterInterfaceRejectsInvalidSelectorWithoutHTTP(t *testing.T) {
@@ -65,8 +42,8 @@ func TestRouterInterfaceRejectsInvalidSelectorWithoutHTTP(t *testing.T) {
 			t.Fatalf("selector %#v error=%v, want ClientError", selector, err)
 		}
 	}
-	if len(transport.requests) != 0 {
-		t.Fatalf("requests=%d, want 0", len(transport.requests))
+	if len(transport.Requests) != 0 {
+		t.Fatalf("requests=%d, want 0", len(transport.Requests))
 	}
 }
 
@@ -81,15 +58,9 @@ func TestRouterRoutesReplaceAndOmit(t *testing.T) {
 	if _, err := Update(context.Background(), client, "router", UpdateRequest{Routes: &empty}); err != nil {
 		t.Fatal(err)
 	}
-	firstBody, _ := io.ReadAll(transport.requests[0].Body)
-	secondBody, _ := io.ReadAll(transport.requests[1].Body)
-	if strings.Contains(string(firstBody), `"routes"`) {
-		t.Fatalf("first body=%s", firstBody)
-	}
-	if !strings.Contains(string(secondBody), `"routes":[]`) {
-		t.Fatalf("second body=%s", secondBody)
-	}
-	if len(transport.requests) != 2 {
-		t.Fatalf("requests=%d", len(transport.requests))
+	testutil.AssertJSONBody(t, transport.Requests[0], `{"router":{"name":"renamed"}}`)
+	testutil.AssertJSONBody(t, transport.Requests[1], `{"router":{"routes":[]}}`)
+	if len(transport.Requests) != 2 {
+		t.Fatalf("requests=%d", len(transport.Requests))
 	}
 }

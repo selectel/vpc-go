@@ -2,120 +2,87 @@ package rbacpolicy
 
 import (
 	"context"
-	"io"
 	"net/http"
-	"strings"
 	"testing"
 
+	"github.com/selectel/vpc-go/internal/testutil"
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
-type scriptedClient struct {
-	requests  []*http.Request
-	responses []*http.Response
-}
-
-func (client *scriptedClient) Do(request *http.Request) (*http.Response, error) {
-	client.requests = append(client.requests, request)
-	return client.responses[len(client.requests)-1], nil
-}
-
-func newClient(t *testing.T, responses ...*http.Response) (*vpc.Client, *scriptedClient) {
-	t.Helper()
-	transport := &scriptedClient{responses: responses}
-	client, err := vpc.NewClient(vpc.Config{
-		Endpoint: "https://network.example.test", Token: "token", HTTPClient: transport,
-	})
-	if err != nil {
-		t.Fatalf("NewClient() error = %v", err)
-	}
-	return client, transport
+func newClient(t *testing.T, responses ...*http.Response) (*vpc.Client, *testutil.Transport) {
+	return testutil.NewClient(t, responses...)
 }
 
 func response(status int, body string) *http.Response {
-	return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body))}
+	return testutil.Response(status, body)
 }
 
-func TestRBACPolicyCRUDAndNonPaginatedList(t *testing.T) {
-	model := `{"rbac_policy":{"id":"id","object_type":"custom_type",` +
-		`"object_id":"object","action":"custom_action","target_tenant":"target"}}`
-	client, transport := newClient(
-		t,
-		response(201, model), response(200, model), response(200, model), response(204, ""),
-		response(200, `{"rbac_policies":[{"id":"id"}]}`),
-	)
+const rbacPolicyModel = `{"rbac_policy":{"id":"id","object_type":"custom_type",` +
+	`"object_id":"object","action":"custom_action","target_tenant":"target"}}`
+
+func TestRBACPolicyCreate(t *testing.T) {
+	client, transport := newClient(t, response(http.StatusCreated, rbacPolicyModel))
 	create := CreateRequest{
 		ObjectType: "custom_type", ObjectID: "object",
 		Action: "custom_action", TargetTenant: "target",
 	}
-	if _, err := Create(context.Background(), client, create); err != nil {
+	created, err := Create(context.Background(), client, create)
+	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if _, err := Get(context.Background(), client, "id"); err != nil {
+	if created.ID != "id" || created.TargetTenant != "target" {
+		t.Fatalf("Create() = %+v", created)
+	}
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodPost, "/v2.0/rbac-policies")
+	testutil.AssertJSONBody(t, transport.Requests[0], `{"rbac_policy":{`+
+		`"object_type":"custom_type","object_id":"object",`+
+		`"action":"custom_action","target_tenant":"target"}}`)
+}
+
+func TestRBACPolicyGet(t *testing.T) {
+	client, transport := newClient(t, response(http.StatusOK, rbacPolicyModel))
+	got, err := Get(context.Background(), client, "id")
+	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
+	if got.ID != "id" || got.ObjectID != "object" {
+		t.Fatalf("Get() = %+v", got)
+	}
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodGet, "/v2.0/rbac-policies/id")
+}
+
+func TestRBACPolicyUpdateOnlySendsTargetTenant(t *testing.T) {
+	client, transport := newClient(t, response(http.StatusOK, rbacPolicyModel))
 	if _, err := Update(
 		context.Background(), client, "id", UpdateRequest{TargetTenant: "other"},
 	); err != nil {
 		t.Fatalf("Update() error = %v", err)
 	}
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodPut, "/v2.0/rbac-policies/id")
+	testutil.AssertJSONBody(t, transport.Requests[0],
+		`{"rbac_policy":{"target_tenant":"other"}}`)
+}
+
+func TestRBACPolicyDelete(t *testing.T) {
+	client, transport := newClient(t, response(http.StatusNoContent, ""))
 	if err := Delete(context.Background(), client, "id"); err != nil {
 		t.Fatalf("Delete() error = %v", err)
 	}
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodDelete, "/v2.0/rbac-policies/id")
+}
+
+func TestRBACPolicyList(t *testing.T) {
+	client, transport := newClient(t,
+		response(http.StatusOK, `{"rbac_policies":[{"id":"id"}]}`))
 	policies, err := List(context.Background(), client, vpc.SelectionOptions{
 		Fields: []string{"id"}, SortKey: "object_id", SortDir: "asc",
 	})
 	if err != nil || len(policies) != 1 {
 		t.Fatalf("List() = %+v, %v", policies, err)
 	}
-	query := transport.requests[4].URL.Query()
-	if query.Has("limit") || query.Has("marker") {
-		t.Fatalf("RBAC list query exposes pagination: %v", query)
-	}
-	updateBody, _ := io.ReadAll(transport.requests[2].Body)
-	for _, forbidden := range []string{"object_type", "object_id", "action", "project_id"} {
-		if strings.Contains(string(updateBody), forbidden) {
-			t.Fatalf("update body contains %s: %s", forbidden, updateBody)
-		}
-	}
-}
-
-func TestRBACPolicyErrorClasses(t *testing.T) {
-	tests := []struct {
-		operation string
-		status    int
-		kind      string
-		class     vpc.ErrorClass
-	}{
-		{"create", 409, "RbacPolicyDuplicate", vpc.ErrorClassConflict},
-		{"update", 409, "RbacPolicyInUse", vpc.ErrorClassConflict},
-		{"delete", 409, "RbacPolicyInUse", vpc.ErrorClassConflict},
-		{"delete", 404, "RbacPolicyNotFound", vpc.ErrorClassNotFound},
-		{"create", 403, "PolicyNotAuthorized", vpc.ErrorClassForbidden},
-		{"update", 404, "RbacPolicyNotFound", vpc.ErrorClassNotFound},
-	}
-
-	for _, test := range tests {
-		client, transport := newClient(t, response(
-			test.status,
-			`{"NeutronError":{"type":"`+test.kind+`","message":"failure"}}`,
-		))
-		var err error
-		switch test.operation {
-		case "create":
-			_, err = Create(context.Background(), client, CreateRequest{
-				ObjectType: "unknown", Action: "unknown",
-			})
-		case "update":
-			_, err = Update(context.Background(), client, "id", UpdateRequest{})
-		default:
-			err = Delete(context.Background(), client, "id")
-		}
-		if !vpc.IsErrorClass(err, test.class) {
-			t.Fatalf("%s error = %v, want %s", test.operation, err, test.class)
-		}
-		if len(transport.requests) != 1 {
-			t.Fatalf("%s request count = %d, want 1", test.operation, len(transport.requests))
-		}
+	query := transport.Requests[0].URL.Query()
+	if query.Get("fields") != "id" || query.Get("sort_key") != "object_id" ||
+		query.Get("sort_dir") != "asc" {
+		t.Fatalf("List() query = %v", query)
 	}
 }

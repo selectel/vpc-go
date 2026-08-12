@@ -24,10 +24,7 @@ type ClientError = api.ClientError
 // TransportError reports a failure before an HTTP response was received.
 type TransportError = api.TransportError
 
-// APIError reports a non-success response from the network API.
-//
-// A NotFound error returned by an update or delete operation does not prove
-// that the resource is absent: Neutron can mask a policy rejection as 404.
+// APIError reports a non-success response from the VPC API.
 type APIError = api.Error
 
 // UnexpectedResponseError reports a success-status response with an invalid

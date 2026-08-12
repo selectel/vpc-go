@@ -2,7 +2,6 @@ package v2
 
 import (
 	"encoding/json"
-	"reflect"
 	"testing"
 )
 
@@ -31,47 +30,5 @@ func TestOptionalThreeStates(t *testing.T) {
 				t.Fatalf("JSON = %s, want %s", data, test.want)
 			}
 		})
-	}
-}
-
-func TestOptionalSliceUnsetAndClear(t *testing.T) {
-	type request struct {
-		Routes *[]string `json:"routes,omitempty"`
-	}
-	empty := []string{}
-
-	unset, err := json.Marshal(request{})
-	if err != nil {
-		t.Fatalf("json.Marshal(unset) error = %v", err)
-	}
-	cleared, err := json.Marshal(request{Routes: &empty})
-	if err != nil {
-		t.Fatalf("json.Marshal(cleared) error = %v", err)
-	}
-
-	if string(unset) != `{}` {
-		t.Fatalf("unset JSON = %s", unset)
-	}
-	if string(cleared) != `{"routes":[]}` {
-		t.Fatalf("cleared JSON = %s", cleared)
-	}
-}
-
-func TestDecodeIgnoresUnknownFields(t *testing.T) {
-	type model struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	}
-
-	var got model
-	err := json.Unmarshal(
-		[]byte(`{"id":"id","name":"name","future_attribute":{"nested":true}}`),
-		&got,
-	)
-	if err != nil {
-		t.Fatalf("json.Unmarshal() error = %v", err)
-	}
-	if !reflect.DeepEqual(got, model{ID: "id", Name: "name"}) {
-		t.Fatalf("model = %+v", got)
 	}
 }

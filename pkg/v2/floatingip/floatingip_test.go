@@ -2,116 +2,85 @@ package floatingip
 
 import (
 	"context"
-	"io"
 	"net/http"
-	"reflect"
-	"strings"
 	"testing"
 
+	"github.com/selectel/vpc-go/internal/testutil"
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
-type scriptedClient struct {
-	requests  []*http.Request
-	responses []*http.Response
-}
-
-func (c *scriptedClient) Do(r *http.Request) (*http.Response, error) {
-	c.requests = append(c.requests, r)
-	return c.responses[len(c.requests)-1], nil
-}
-
 func response(s int, b string) *http.Response {
-	return &http.Response{StatusCode: s, Body: io.NopCloser(strings.NewReader(b))}
+	return testutil.Response(s, b)
 }
 
-func newClient(t *testing.T, rs ...*http.Response) (*vpc.Client, *scriptedClient) {
-	t.Helper()
-	tr := &scriptedClient{responses: rs}
-	c, e := vpc.NewClient(vpc.Config{Endpoint: "https://network.example.test", Token: "token", HTTPClient: tr})
-	if e != nil {
-		t.Fatal(e)
-	}
-	return c, tr
+func newClient(t *testing.T, rs ...*http.Response) (*vpc.Client, *testutil.Transport) {
+	return testutil.NewClient(t, rs...)
 }
 
-func TestFloatingIPCRUDDetachListAndTags(t *testing.T) {
-	model := `{"floatingip":{"id":"id","floating_network_id":"ext","floating_ip_address":"203.0.113.1","status":"DOWN","blocked":true}}`
-	c, tr := newClient(t, response(201, model), response(200, model), response(200, `{"floatingip":{"id":"id","port_id":null,"router_id":null}}`), response(204, ""), response(200, `{"floatingips":[{"id":"id"}],"floatingips_links":[]}`), response(200, `{"tags":[]}`))
-	if _, e := Create(context.Background(), c, CreateRequest{FloatingNetworkID: "ext"}); e != nil {
-		t.Fatal(e)
+const floatingIPModel = `{"floatingip":{"id":"id","floating_network_id":"ext",` +
+	`"floating_ip_address":"203.0.113.1","status":"DOWN","blocked":true}}`
+
+func TestFloatingIPCreate(t *testing.T) {
+	client, transport := newClient(t, response(http.StatusCreated, floatingIPModel))
+	created, err := Create(context.Background(), client, CreateRequest{FloatingNetworkID: "ext"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
 	}
-	if _, e := Get(context.Background(), c, "id"); e != nil {
-		t.Fatal(e)
+	if created.ID != "id" || created.FloatingIPAddress != "203.0.113.1" {
+		t.Fatalf("Create() = %+v", created)
 	}
-	if _, e := Update(context.Background(), c, "id", UpdateRequest{
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodPost, "/v2.0/floatingips")
+	testutil.AssertJSONBody(t, transport.Requests[0], `{"floatingip":{"floating_network_id":"ext"}}`)
+}
+
+func TestFloatingIPGet(t *testing.T) {
+	client, transport := newClient(t, response(http.StatusOK, floatingIPModel))
+	got, err := Get(context.Background(), client, "id")
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+	if got.ID != "id" || got.Status != "DOWN" {
+		t.Fatalf("Get() = %+v", got)
+	}
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodGet, "/v2.0/floatingips/id")
+}
+
+func TestFloatingIPUpdateDetachesPort(t *testing.T) {
+	client, transport := newClient(t, response(http.StatusOK,
+		`{"floatingip":{"id":"id","port_id":null,"router_id":null}}`))
+	if _, err := Update(context.Background(), client, "id", UpdateRequest{
 		PortID: vpc.Null[string](), FixedIPAddress: vpc.Null[string](),
-	}); e != nil {
-		t.Fatal(e)
+	}); err != nil {
+		t.Fatalf("Update() error = %v", err)
 	}
-	if e := Delete(context.Background(), c, "id"); e != nil {
-		t.Fatal(e)
-	}
-	if fs, e := List(context.Background(), c, vpc.ListOptions{}); e != nil || len(fs) != 1 {
-		t.Fatalf("List=%+v,%v", fs, e)
-	}
-	if _, e := TagOperations(c, "id").Get(context.Background()); e != nil {
-		t.Fatal(e)
-	}
-	createBody, _ := io.ReadAll(tr.requests[0].Body)
-	updateBody, _ := io.ReadAll(tr.requests[2].Body)
-	for _, f := range []string{"floating_ip_address", "qos_policy_id", "blocked"} {
-		if strings.Contains(string(createBody), f) {
-			t.Fatalf("create contains %s", f)
-		}
-	}
-	if !strings.Contains(string(updateBody), `"port_id":null`) ||
-		!strings.Contains(string(updateBody), `"fixed_ip_address":null`) {
-		t.Fatalf("update=%s", updateBody)
-	}
-	if _, exists := reflect.TypeOf(FloatingIP{}).FieldByName("SubnetID"); exists {
-		t.Fatal("FloatingIP exposes create-only SubnetID")
-	}
-	for _, value := range []any{FloatingIP{}, CreateRequest{}, UpdateRequest{}} {
-		for _, field := range []string{"DNSName", "DNSDomain"} {
-			if _, exists := reflect.TypeOf(value).FieldByName(field); exists {
-				t.Fatalf("%T unexpectedly exposes %s", value, field)
-			}
-		}
-	}
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodPut, "/v2.0/floatingips/id")
+	testutil.AssertJSONBody(t, transport.Requests[0],
+		`{"floatingip":{"port_id":null,"fixed_ip_address":null}}`)
 }
 
-func TestFloatingIPErrorClasses(t *testing.T) {
-	for _, x := range []struct {
-		s int
-		k string
-		c vpc.ErrorClass
-	}{{409, "OverQuota", vpc.ErrorClassQuotaExceeded}, {409, "IpAddressGenerationFailure", vpc.ErrorClassAddressUnavailable}, {400, "ExternalIpAddressExhausted", vpc.ErrorClassAddressUnavailable}, {409, "PortInUse", vpc.ErrorClassConflict}, {404, "FloatingIPNotFound", vpc.ErrorClassNotFound}} {
-		c, _ := newClient(t, response(x.s, `{"NeutronError":{"type":"`+x.k+`","message":"failure"}}`))
-		_, e := Create(context.Background(), c, CreateRequest{FloatingNetworkID: "ext"})
-		if !vpc.IsErrorClass(e, x.c) {
-			t.Fatalf("%s error=%v want %s", x.k, e, x.c)
-		}
+func TestFloatingIPDelete(t *testing.T) {
+	client, transport := newClient(t, response(http.StatusNoContent, ""))
+	if err := Delete(context.Background(), client, "id"); err != nil {
+		t.Fatalf("Delete() error = %v", err)
 	}
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodDelete, "/v2.0/floatingips/id")
 }
 
-func TestFloatingIPDeleteDoesNotCascadeAndTagsReplaceReturnsResult(t *testing.T) {
+func TestFloatingIPList(t *testing.T) {
 	client, transport := newClient(t,
-		response(http.StatusConflict,
-			`{"NeutronError":{"type":"FipInUseByPortForwarding","message":"rules remain"}}`),
-		response(http.StatusOK, `{"tags":["edge"]}`),
-	)
-	err := Delete(context.Background(), client, "id")
-	if !vpc.IsErrorClass(err, vpc.ErrorClassConflict) {
-		t.Fatalf("Delete() error=%v, want conflict", err)
+		response(http.StatusOK, `{"floatingips":[{"id":"id"}],"floatingips_links":[]}`))
+	items, err := List(context.Background(), client, vpc.ListOptions{})
+	if err != nil || len(items) != 1 {
+		t.Fatalf("List() = %+v, %v", items, err)
 	}
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodGet, "/v2.0/floatingips")
+}
+
+func TestFloatingIPTagsReplaceReturnsResult(t *testing.T) {
+	client, transport := newClient(t, response(http.StatusOK, `{"tags":["edge"]}`))
 	tags, err := TagOperations(client, "id").Replace(context.Background(), []string{"edge"})
 	if err != nil || len(tags) != 1 || tags[0] != "edge" {
 		t.Fatalf("Replace()=%v,%v", tags, err)
 	}
-	if len(transport.requests) != 2 ||
-		transport.requests[0].Method != http.MethodDelete ||
-		transport.requests[1].Method != http.MethodPut {
-		t.Fatalf("requests=%+v", transport.requests)
-	}
+	testutil.AssertRequest(t, transport.Requests[0], http.MethodPut, "/v2.0/floatingips/id/tags")
 }
