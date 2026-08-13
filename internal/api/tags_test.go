@@ -63,6 +63,15 @@ func TestTagsDeletePath(t *testing.T) {
 	assertTagRequest(t, transport, http.MethodDelete, "/v2.0/security-groups/resource-id/tags/one%2Ftag")
 }
 
+func TestTagsDeleteIsIdempotent(t *testing.T) {
+	operations, transport := newTagTestOperations(t, http.StatusNotFound, "")
+	if err := operations.Delete(context.Background(), "missing"); err != nil {
+		t.Fatalf("Delete() error = %v", err)
+	}
+	assertTagRequest(t, transport, http.MethodDelete,
+		"/v2.0/security-groups/resource-id/tags/missing")
+}
+
 func TestTagsReplacePath(t *testing.T) {
 	operations, transport := newTagTestOperations(t, http.StatusOK, `{"tags":["two"]}`)
 	replaced, err := operations.Replace(context.Background(), []string{"two"})

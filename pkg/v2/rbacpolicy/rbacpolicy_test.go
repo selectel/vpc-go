@@ -73,16 +73,24 @@ func TestRBACPolicyDelete(t *testing.T) {
 
 func TestRBACPolicyList(t *testing.T) {
 	client, transport := newClient(t,
-		response(http.StatusOK, `{"rbac_policies":[{"id":"id"}]}`))
+		response(http.StatusOK, `{"rbac_policies":[{"id":"one"}],`+
+			`"rbac_policies_links":[{"rel":"next",`+
+			`"href":"https://ignored.invalid/v2.0/rbac-policies?fields=id&marker=one"}]}`),
+		response(http.StatusOK, `{"rbac_policies":[{"id":"two"}],`+
+			`"rbac_policies_links":[]}`),
+	)
 	policies, err := List(context.Background(), client, vpc.SelectionOptions{
 		Fields: []string{"id"}, SortKey: "object_id", SortDir: "asc",
 	})
-	if err != nil || len(policies) != 1 {
+	if err != nil || len(policies) != 2 {
 		t.Fatalf("List() = %+v, %v", policies, err)
 	}
 	query := transport.Requests[0].URL.Query()
 	if query.Get("fields") != "id" || query.Get("sort_key") != "object_id" ||
 		query.Get("sort_dir") != "asc" {
 		t.Fatalf("List() query = %v", query)
+	}
+	if len(transport.Requests) != 2 || transport.Requests[1].URL.Query().Get("marker") != "one" {
+		t.Fatalf("List() requests = %+v", transport.Requests)
 	}
 }

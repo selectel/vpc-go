@@ -50,8 +50,13 @@ func (operations TagOperations) Add(ctx context.Context, tag string) error {
 }
 
 func (operations TagOperations) Delete(ctx context.Context, tag string) error {
-	return Request(ctx, operations.client, http.MethodDelete, operations.tagPath(tag), nil, nil,
+	err := Request(ctx, operations.client, http.MethodDelete, operations.tagPath(tag), nil, nil,
 		nil, http.StatusNoContent)
+	if IsErrorClass(err, ErrorClassNotFound) {
+		return nil
+	}
+
+	return err
 }
 
 func (operations TagOperations) Replace(ctx context.Context, tags []string) ([]string, error) {

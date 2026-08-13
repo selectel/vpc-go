@@ -39,7 +39,8 @@ type envelope struct {
 }
 
 type listEnvelope struct {
-	Policies []Policy `json:"rbac_policies"`
+	Policies []Policy       `json:"rbac_policies"`
+	Links    []api.PageLink `json:"rbac_policies_links"`
 }
 
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Policy, error) {
@@ -97,14 +98,19 @@ func List(
 	client *vpc.Client,
 	options vpc.SelectionOptions,
 ) ([]Policy, error) {
-	var result listEnvelope
-	err := api.Request(ctx, client, http.MethodGet, collectionPath, options.Values(), nil, &result,
-		http.StatusOK,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return result.Policies, nil
+	return api.WalkPages(ctx, options.Values(), func(
+		ctx context.Context,
+		query url.Values,
+	) (api.Page[Policy], error) {
+		var result listEnvelope
+		err := api.Request(ctx, client, http.MethodGet, collectionPath, query, nil, &result,
+			http.StatusOK,
+		)
+		return api.Page[Policy]{
+			Items:    result.Policies,
+			NextLink: api.NextPageLink(result.Links),
+		}, err
+	})
 }
 
 func resourcePath(id string) string {
