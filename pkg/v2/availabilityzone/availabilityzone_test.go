@@ -17,8 +17,6 @@ func response(status int, body string) *http.Response {
 	return testutil.Response(status, body)
 }
 
-// The same zone name appears once per resource it serves, so a caller looking for
-// router zones has to filter — both fields are therefore decoded.
 func TestAvailabilityZoneList(t *testing.T) {
 	body := `{"availability_zones":[` +
 		`{"state":"available","name":"cloudnet-1a","resource":"network"},` +

@@ -92,7 +92,6 @@ func Delete(ctx context.Context, client *vpc.Client, id string) error {
 	)
 }
 
-// List reads the RBAC policy collection.
 func List(
 	ctx context.Context,
 	client *vpc.Client,

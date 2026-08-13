@@ -1,4 +1,3 @@
-// Package availabilityzone provides read access to VPC availability zones.
 package availabilityzone
 
 import (
@@ -13,20 +12,16 @@ import (
 
 const collectionPath = "/v2.0/availability_zones"
 
-// Resource values an availability zone can serve.
 const (
 	ResourceNetwork = "network"
 	ResourceRouter  = "router"
 )
 
-// State values an availability zone can be in.
 const (
 	StateAvailable   = "available"
 	StateUnavailable = "unavailable"
 )
 
-// AvailabilityZone is one zone as it serves one kind of resource: the same name
-// appears once per resource it serves.
 type AvailabilityZone struct {
 	Name     string `json:"name"`
 	Resource string `json:"resource"`
@@ -38,10 +33,6 @@ type listEnvelope struct {
 	Links             []api.PageLink     `json:"availability_zones_links"`
 }
 
-// List returns the availability zones of the region the client is scoped to.
-//
-// The name, resource and state filters are supported by the API through
-// vpc.ListOptions.
 func List(
 	ctx context.Context,
 	client *vpc.Client,

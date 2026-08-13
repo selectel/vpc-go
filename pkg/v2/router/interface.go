@@ -10,7 +10,6 @@ import (
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
-// InterfaceRequest identifies a router interface by either subnet or port.
 type InterfaceRequest struct {
 	SubnetID string `json:"subnet_id,omitempty"`
 	PortID   string `json:"port_id,omitempty"`

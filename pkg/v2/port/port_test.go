@@ -53,8 +53,6 @@ func TestPortUpdateClearsCollectionsAndRemovesDHCPOption(t *testing.T) {
 	emptyIPs := []FixedIP{}
 	emptyPairs := []AllowedAddressPair{}
 	dnsName := "host"
-	// The update keeps one option and removes another: a removal is a name with an
-	// explicit null value, because an omitted option would simply stay as it is.
 	keptValue := "example.test"
 	updateOptions := []UpdateExtraDHCPOption{
 		{Name: "domain-name", Value: &keptValue},

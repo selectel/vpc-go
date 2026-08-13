@@ -1,4 +1,3 @@
-// Package securitygroup provides operations for security group resources.
 package securitygroup
 
 import (
@@ -14,7 +13,6 @@ import (
 
 const collectionPath = "/v2.0/security-groups"
 
-// SecurityGroup represents a security group.
 type SecurityGroup struct {
 	ID                 string                   `json:"id"`
 	Name               string                   `json:"name"`
@@ -29,10 +27,6 @@ type SecurityGroup struct {
 	Tags               []string                 `json:"tags"`
 }
 
-// CreateRequest contains the caller-writable attributes of a new group.
-//
-// Stateful is a pointer so an omitted value keeps the API default of true,
-// distinct from an explicit false.
 type CreateRequest struct {
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
@@ -40,7 +34,6 @@ type CreateRequest struct {
 	ProjectID   *string `json:"project_id,omitempty"`
 }
 
-// UpdateRequest contains the caller-writable attributes of an existing group.
 type UpdateRequest struct {
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`

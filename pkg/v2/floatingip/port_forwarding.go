@@ -10,7 +10,6 @@ import (
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
-// PortForwarding is a port-forwarding rule belonging to one floating IP.
 type PortForwarding struct {
 	ID                string `json:"id"`
 	Protocol          string `json:"protocol"`
@@ -21,7 +20,6 @@ type PortForwarding struct {
 	Description       string `json:"description"`
 }
 
-// PortForwardingCreateRequest contains caller-writable attributes for a new rule.
 type PortForwardingCreateRequest struct {
 	Protocol          *string `json:"protocol,omitempty"`
 	InternalPortID    *string `json:"internal_port_id,omitempty"`
@@ -32,7 +30,6 @@ type PortForwardingCreateRequest struct {
 	ProjectID         *string `json:"project_id,omitempty"`
 }
 
-// PortForwardingUpdateRequest contains caller-writable attributes for a rule.
 type PortForwardingUpdateRequest struct {
 	Protocol          *string `json:"protocol,omitempty"`
 	InternalPortID    *string `json:"internal_port_id,omitempty"`
@@ -51,7 +48,6 @@ type portForwardingListEnvelope struct {
 	Links           []api.PageLink   `json:"port_forwardings_links"`
 }
 
-// CreatePortForwarding creates one rule under floatingIPID.
 func CreatePortForwarding(
 	ctx context.Context,
 	client *vpc.Client,
@@ -75,7 +71,6 @@ func CreatePortForwarding(
 	return &envelope.PortForwarding, nil
 }
 
-// GetPortForwarding reads one rule under floatingIPID.
 func GetPortForwarding(
 	ctx context.Context,
 	client *vpc.Client,
@@ -97,7 +92,6 @@ func GetPortForwarding(
 	return &envelope.PortForwarding, nil
 }
 
-// UpdatePortForwarding updates one rule under floatingIPID.
 func UpdatePortForwarding(
 	ctx context.Context,
 	client *vpc.Client,
@@ -122,7 +116,6 @@ func UpdatePortForwarding(
 	return &envelope.PortForwarding, nil
 }
 
-// DeletePortForwarding deletes one rule under floatingIPID.
 func DeletePortForwarding(
 	ctx context.Context,
 	client *vpc.Client,
@@ -139,7 +132,6 @@ func DeletePortForwarding(
 	)
 }
 
-// ListPortForwardings reads the complete rule collection under floatingIPID.
 func ListPortForwardings(
 	ctx context.Context,
 	client *vpc.Client,

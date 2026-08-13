@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-// SelectionOptions contains query parameters shared by all list operations.
+// SelectionOptions contains query parameters shared by all List operations.
 type SelectionOptions struct {
 	Filters map[string][]string
 	Fields  []string

@@ -1,4 +1,3 @@
-// Package testutil contains HTTP test helpers shared by the public resource packages.
 package testutil
 
 import (
@@ -13,7 +12,6 @@ import (
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
-// Transport returns scripted responses and records every request it receives.
 type Transport struct {
 	Requests  []*http.Request
 	Responses []*http.Response
@@ -50,7 +48,6 @@ func Response(status int, body string) *http.Response {
 	return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body))}
 }
 
-// AssertJSONBody compares JSON values rather than their formatting or object-key order.
 func AssertJSONBody(t testing.TB, request *http.Request, want string) {
 	t.Helper()
 	if request.Body == nil {

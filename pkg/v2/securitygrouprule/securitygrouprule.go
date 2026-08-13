@@ -1,4 +1,3 @@
-// Package securitygrouprule provides operations for security group rule resources.
 package securitygrouprule
 
 import (
@@ -13,7 +12,6 @@ import (
 
 const collectionPath = "/v2.0/security-group-rules"
 
-// Rule represents a security group rule.
 type Rule struct {
 	ID              string  `json:"id"`
 	SecurityGroupID string  `json:"security_group_id"`
@@ -31,7 +29,6 @@ type Rule struct {
 	UpdatedAt       string  `json:"updated_at"`
 }
 
-// CreateRequest contains caller-writable attributes for a new rule.
 type CreateRequest struct {
 	SecurityGroupID string  `json:"security_group_id"`
 	Direction       string  `json:"direction"`

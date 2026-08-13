@@ -1,4 +1,3 @@
-// Package network provides operations for network resources.
 package network
 
 import (
@@ -13,7 +12,6 @@ import (
 
 const collectionPath = "/v2.0/networks"
 
-// Network represents a VPC network.
 type Network struct {
 	ID                    string   `json:"id"`
 	Name                  string   `json:"name"`
@@ -38,7 +36,6 @@ type Network struct {
 	DNSDomain             string   `json:"dns_domain"`
 }
 
-// CreateRequest contains caller-writable network attributes.
 type CreateRequest struct {
 	Name                  *string   `json:"name,omitempty"`
 	Description           *string   `json:"description,omitempty"`
@@ -48,7 +45,6 @@ type CreateRequest struct {
 	DNSDomain             *string   `json:"dns_domain,omitempty"`
 }
 
-// UpdateRequest contains caller-writable network attributes.
 type UpdateRequest struct {
 	Name         *string `json:"name,omitempty"`
 	Description  *string `json:"description,omitempty"`
@@ -65,7 +61,6 @@ type listEnvelope struct {
 	Links    []api.PageLink `json:"networks_links"`
 }
 
-// Create creates one network with one HTTP request.
 func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Network, error) {
 	var envelope networkEnvelope
 	err := api.Request(ctx, client,
@@ -84,7 +79,6 @@ func Create(ctx context.Context, client *vpc.Client, request CreateRequest) (*Ne
 	return &envelope.Network, nil
 }
 
-// Get reads one network.
 func Get(ctx context.Context, client *vpc.Client, networkID string) (*Network, error) {
 	var envelope networkEnvelope
 	err := api.Request(ctx, client,
@@ -101,7 +95,6 @@ func Get(ctx context.Context, client *vpc.Client, networkID string) (*Network, e
 	return &envelope.Network, nil
 }
 
-// Update updates one network with one HTTP request.
 func Update(
 	ctx context.Context,
 	client *vpc.Client,
@@ -125,7 +118,6 @@ func Update(
 	return &envelope.Network, nil
 }
 
-// Delete deletes one network without deleting its ports.
 func Delete(ctx context.Context, client *vpc.Client, networkID string) error {
 	return api.Request(ctx, client,
 		http.MethodDelete,
@@ -137,7 +129,6 @@ func Delete(ctx context.Context, client *vpc.Client, networkID string) error {
 	)
 }
 
-// List reads the complete network collection.
 func List(
 	ctx context.Context,
 	client *vpc.Client,
@@ -163,12 +154,10 @@ func List(
 	})
 }
 
-// Tags provides typed tag operations for one network.
 type Tags struct {
 	operations api.TagOperations
 }
 
-// TagOperations returns tag operations bound to networkID.
 func TagOperations(client *vpc.Client, networkID string) Tags {
 	return Tags{operations: api.NewTagOperations(
 		client,

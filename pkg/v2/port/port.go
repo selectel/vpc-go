@@ -1,4 +1,3 @@
-// Package port provides operations for port resources.
 package port
 
 import (
@@ -29,11 +28,6 @@ type ExtraDHCPOption struct {
 	IPVersion *int   `json:"ip_version,omitempty"`
 }
 
-// UpdateExtraDHCPOption is an extra DHCP option of an update request.
-//
-// Value is a pointer because an update does not replace the whole set of options:
-// an option the request leaves out keeps whatever it has, so the only way to remove
-// one is to send its name with an explicit null value.
 type UpdateExtraDHCPOption struct {
 	Name      string  `json:"opt_name"`
 	Value     *string `json:"opt_value"`

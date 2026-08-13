@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/selectel/vpc-go/internal/utils"
@@ -38,7 +37,7 @@ type Client struct {
 }
 
 func NewClient(config Config) (*Client, error) {
-	if strings.TrimSpace(config.Endpoint) == "" {
+	if config.Endpoint == "" {
 		return nil, errors.New("endpoint is required")
 	}
 	if config.Token == "" {
@@ -75,10 +74,8 @@ func (client *Client) do(
 	query url.Values,
 	body io.Reader,
 ) (*http.Response, error) {
-	requestURL := client.endpoint.JoinPath(strings.TrimPrefix(path, "/"))
-	if len(query) != 0 {
-		requestURL.RawQuery = query.Encode()
-	}
+	requestURL := client.endpoint.JoinPath(path)
+	requestURL.RawQuery = query.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, method, requestURL.String(), body)
 	if err != nil {
