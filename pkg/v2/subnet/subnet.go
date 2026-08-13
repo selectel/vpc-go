@@ -28,7 +28,6 @@ type Subnet struct {
 	NetworkID       string           `json:"network_id"`
 	IPVersion       int              `json:"ip_version"`
 	CIDR            string           `json:"cidr"`
-	SubnetPoolID    *string          `json:"subnetpool_id"`
 	Name            string           `json:"name"`
 	Description     string           `json:"description"`
 	GatewayIP       *string          `json:"gateway_ip"`
@@ -51,7 +50,6 @@ type CreateRequest struct {
 	NetworkID       string                `json:"network_id"`
 	IPVersion       int                   `json:"ip_version"`
 	CIDR            *string               `json:"cidr,omitempty"`
-	PrefixLength    *int                  `json:"prefixlen,omitempty"`
 	Name            *string               `json:"name,omitempty"`
 	Description     *string               `json:"description,omitempty"`
 	GatewayIP       *vpc.Optional[string] `json:"gateway_ip,omitempty"`
@@ -62,7 +60,6 @@ type CreateRequest struct {
 	IPv6RAMode      *string               `json:"ipv6_ra_mode,omitempty"`
 	IPv6AddressMode *string               `json:"ipv6_address_mode,omitempty"`
 	ProjectID       *string               `json:"project_id,omitempty"`
-	SubnetPoolID    *string               `json:"subnetpool_id,omitempty"`
 }
 
 type UpdateRequest struct {
