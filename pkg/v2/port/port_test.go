@@ -16,22 +16,26 @@ const portModel = `{"port":{"id":"id","network_id":"net","status":"DOWN",` +
 func TestPortCreate(t *testing.T) {
 	client, transport := testutil.NewClient(t, testutil.Response(http.StatusCreated, portModel))
 	emptyStrings := []string{}
+	fixedIPs := []FixedIP{{IPAddress: "192.168.199.42"}}
 	dhcpOptions := []ExtraDHCPOption{{Name: "domain-name", Value: "example.test"}}
 	dnsName := "host"
 	created, err := Create(context.Background(), client, CreateRequest{
 		NetworkID: "net", SecurityGroups: &emptyStrings,
+		FixedIPs:         &fixedIPs,
 		ExtraDHCPOptions: &dhcpOptions,
 		DNSName:          &dnsName,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created.DNSName != dnsName || len(created.ExtraDHCPOptions) != 1 {
+	if created.DNSName != dnsName || len(created.ExtraDHCPOptions) != 1 ||
+		created.ExtraDHCPOptions[0].IPVersion != 4 {
 		t.Fatalf("created=%+v", created)
 	}
 	testutil.AssertRequest(t, transport.Requests[0], http.MethodPost, "/v2.0/ports")
 	testutil.AssertJSONBody(t, transport.Requests[0], `{"port":{"network_id":"net",`+
-		`"security_groups":[],"extra_dhcp_opts":[{"opt_name":"domain-name",`+
+		`"fixed_ips":[{"ip_address":"192.168.199.42"}],"security_groups":[],`+
+		`"extra_dhcp_opts":[{"opt_name":"domain-name",`+
 		`"opt_value":"example.test"}],"dns_name":"host"}}`)
 }
 

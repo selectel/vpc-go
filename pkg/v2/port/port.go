@@ -13,7 +13,7 @@ import (
 const collectionPath = "/v2.0/ports"
 
 type FixedIP struct {
-	SubnetID  string `json:"subnet_id"`
+	SubnetID  string `json:"subnet_id,omitempty"`
 	IPAddress string `json:"ip_address,omitempty"`
 }
 
@@ -25,7 +25,7 @@ type AllowedAddressPair struct {
 type ExtraDHCPOption struct {
 	Name      string `json:"opt_name"`
 	Value     string `json:"opt_value"`
-	IPVersion *int   `json:"ip_version,omitempty"`
+	IPVersion int    `json:"ip_version,omitempty"`
 }
 
 type UpdateExtraDHCPOption struct {
