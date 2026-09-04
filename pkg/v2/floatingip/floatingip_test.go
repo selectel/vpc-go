@@ -29,7 +29,8 @@ func TestFloatingIPGet(t *testing.T) {
 	}
 	if got.ID != "id" || got.FloatingIPAddress != "203.0.113.1" ||
 		got.PortID == nil || *got.PortID != "port-id" ||
-		got.FixedIPAddress == nil || *got.FixedIPAddress != "192.0.2.10" {
+		got.FixedIPAddress == nil || *got.FixedIPAddress != "192.0.2.10" ||
+		got.Status != "DOWN" {
 		t.Fatalf("Get() = %+v", got)
 	}
 	testutil.AssertRequest(t, transport.Requests[0], http.MethodGet, "/v2.0/floatingips/id")

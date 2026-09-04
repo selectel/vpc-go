@@ -17,6 +17,7 @@ type FloatingIP struct {
 	FloatingIPAddress string  `json:"floating_ip_address"`
 	PortID            *string `json:"port_id"`
 	FixedIPAddress    *string `json:"fixed_ip_address"`
+	Status            string  `json:"status"`
 }
 
 type UpdateRequest struct {
