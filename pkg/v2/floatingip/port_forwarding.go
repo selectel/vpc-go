@@ -15,17 +15,21 @@ type PortForwarding struct {
 	Protocol          string `json:"protocol"`
 	InternalPortID    string `json:"internal_port_id"`
 	InternalIPAddress string `json:"internal_ip_address"`
-	InternalPort      int    `json:"internal_port"`
-	ExternalPort      int    `json:"external_port"`
+	InternalPort      *int   `json:"internal_port"`
+	ExternalPort      *int   `json:"external_port"`
+	InternalPortRange string `json:"internal_port_range"`
+	ExternalPortRange string `json:"external_port_range"`
 	Description       string `json:"description"`
 }
 
 type PortForwardingCreateRequest struct {
-	Protocol          *string `json:"protocol,omitempty"`
-	InternalPortID    *string `json:"internal_port_id,omitempty"`
-	InternalIPAddress *string `json:"internal_ip_address,omitempty"`
+	Protocol          string  `json:"protocol"`
+	InternalPortID    string  `json:"internal_port_id"`
+	InternalIPAddress string  `json:"internal_ip_address"`
 	InternalPort      *int    `json:"internal_port,omitempty"`
 	ExternalPort      *int    `json:"external_port,omitempty"`
+	InternalPortRange *string `json:"internal_port_range,omitempty"`
+	ExternalPortRange *string `json:"external_port_range,omitempty"`
 	Description       *string `json:"description,omitempty"`
 	ProjectID         *string `json:"project_id,omitempty"`
 }
@@ -36,6 +40,8 @@ type PortForwardingUpdateRequest struct {
 	InternalIPAddress *string `json:"internal_ip_address,omitempty"`
 	InternalPort      *int    `json:"internal_port,omitempty"`
 	ExternalPort      *int    `json:"external_port,omitempty"`
+	InternalPortRange *string `json:"internal_port_range,omitempty"`
+	ExternalPortRange *string `json:"external_port_range,omitempty"`
 	Description       *string `json:"description,omitempty"`
 }
 
