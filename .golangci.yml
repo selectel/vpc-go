@@ -17,12 +17,13 @@ linters:
     - godot
     - godox
     - goheader
-    - gomodguard
+    - gomodguard_v2
     - goprintffuncname
     - gosec
     - govet
     - ineffassign
     - misspell
+    - modernize
     - nakedret
     - noctx
     - nolintlint
@@ -49,6 +50,7 @@ linters:
       - path: _test\.go
         linters:
           - bodyclose
+          - goconst
 formatters:
   enable:
     - gofumpt

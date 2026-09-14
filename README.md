@@ -53,10 +53,22 @@ Run the tests:
 make test
 ```
 
+Run the tests with a coverage report (also what CI runs):
+
+```sh
+make cover
+```
+
 Run the linters configured in `.golangci.yml` with:
 
 ```sh
 make lint
+```
+
+Apply automatic fixes (`go fix` and linter auto-fixes, including `modernize`) with:
+
+```sh
+make fix
 ```
 
 Run all local checks with:
