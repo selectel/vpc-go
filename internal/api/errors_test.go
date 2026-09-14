@@ -16,16 +16,13 @@ func TestErrorSourcesAreDistinct(t *testing.T) {
 		`{"NeutronError":{"type":"NetworkNotFound","message":"missing","detail":"network id"}}`,
 	))
 
-	var gotClient *ClientError
-	var gotTransport *TransportError
-	var gotAPI *Error
-	if !errors.As(clientErr, &gotClient) {
+	if _, ok := errors.AsType[*ClientError](clientErr); !ok {
 		t.Fatal("ClientError is not distinguishable")
 	}
-	if !errors.As(transportErr, &gotTransport) {
+	if _, ok := errors.AsType[*TransportError](transportErr); !ok {
 		t.Fatal("TransportError is not distinguishable")
 	}
-	if !errors.As(apiErr, &gotAPI) {
+	if _, ok := errors.AsType[*Error](apiErr); !ok {
 		t.Fatal("APIError is not distinguishable")
 	}
 	if apiErr.StatusCode != http.StatusNotFound ||
@@ -52,6 +49,8 @@ func TestErrorClasses(t *testing.T) {
 		{"not found", 404, "NetworkNotFound", ErrorClassNotFound},
 		{"conflict", 409, "NetworkInUse", ErrorClassConflict},
 		{"server", 503, "ServiceUnavailable", ErrorClassServer},
+		{"redirect is unclassified", 302, "", ErrorClassUnclassified},
+		{"teapot is unclassified", 418, "Teapot", ErrorClassUnclassified},
 	}
 
 	for _, test := range tests {
@@ -165,5 +164,82 @@ func TestRequestWrapsTransportError(t *testing.T) {
 	var transportErr *TransportError
 	if !errors.As(err, &transportErr) || !errors.Is(err, connectionErr) {
 		t.Fatalf("Request() error = %v, want transport error", err)
+	}
+}
+
+func TestErrorMessages(t *testing.T) {
+	cause := errors.New("connection reset")
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{
+			"client",
+			&ClientError{Err: cause},
+			"vpc client error: connection reset",
+		},
+		{
+			"transport",
+			&TransportError{Err: cause},
+			"vpc transport error: connection reset",
+		},
+		{
+			"api with message",
+			&Error{StatusCode: 404, Type: "NetworkNotFound", Message: "missing"},
+			"vpc API error (404, NetworkNotFound): missing",
+		},
+		{
+			"api without message",
+			&Error{StatusCode: 503, Type: "ServiceUnavailable"},
+			"vpc API error (503, ServiceUnavailable)",
+		},
+		{
+			"unexpected response",
+			&UnexpectedResponseError{StatusCode: 200, Err: cause},
+			"unexpected vpc API response (200): connection reset",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := test.err.Error(); got != test.want {
+				t.Fatalf("Error() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestErrorsUnwrapToCause(t *testing.T) {
+	cause := errors.New("cause")
+	for _, err := range []error{
+		&ClientError{Err: cause},
+		&TransportError{Err: cause},
+		&UnexpectedResponseError{Err: cause},
+	} {
+		if !errors.Is(err, cause) {
+			t.Fatalf("%T does not unwrap to its cause", err)
+		}
+	}
+}
+
+func TestRequestRejectsUnencodableBody(t *testing.T) {
+	httpClient := &recordingHTTPClient{}
+	client, err := NewClient(Config{
+		Endpoint:   "https://network.example.test",
+		Token:      "token",
+		HTTPClient: httpClient,
+	})
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	err = Request(context.Background(), client, http.MethodPost, "/v2.0/networks", nil,
+		make(chan int), nil, http.StatusCreated)
+	if _, ok := errors.AsType[*ClientError](err); !ok {
+		t.Fatalf("Request() error = %v, want ClientError", err)
+	}
+	if len(httpClient.requests) != 0 {
+		t.Fatalf("request count = %d, want 0", len(httpClient.requests))
 	}
 }

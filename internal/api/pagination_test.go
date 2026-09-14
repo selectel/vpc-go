@@ -50,3 +50,16 @@ func TestWalkPagesReturnsFetchError(t *testing.T) {
 		t.Fatalf("error=%v, want %v", err, wantErr)
 	}
 }
+
+func TestWalkPagesRejectsMalformedNextLink(t *testing.T) {
+	_, err := WalkPages(
+		context.Background(),
+		nil,
+		func(context.Context, url.Values) (Page[string], error) {
+			return Page[string]{Items: []string{"one"}, NextLink: "://missing-scheme"}, nil
+		},
+	)
+	if err == nil {
+		t.Fatal("WalkPages() returned nil error for malformed next link")
+	}
+}

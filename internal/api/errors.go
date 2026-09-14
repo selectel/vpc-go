@@ -59,8 +59,7 @@ func (err *UnexpectedResponseError) Error() string {
 func (err *UnexpectedResponseError) Unwrap() error { return err.Err }
 
 func IsErrorClass(err error, class ErrorClass) bool {
-	var apiErr *Error
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*Error](err); ok {
 		return apiErr.Class == class
 	}
 	var unexpectedErr *UnexpectedResponseError

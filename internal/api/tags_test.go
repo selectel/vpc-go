@@ -103,3 +103,26 @@ func assertTagRequest(t *testing.T, transport *recordingHTTPClient, method, esca
 			request.Method, request.URL.EscapedPath(), method, escapedPath)
 	}
 }
+
+func TestTagsHasReportsMissingTag(t *testing.T) {
+	operations, _ := newTagTestOperations(t, http.StatusNotFound, "")
+	has, err := operations.Has(context.Background(), "missing")
+	if err != nil {
+		t.Fatalf("Has() error = %v", err)
+	}
+	if has {
+		t.Fatal("Has() = true, want false")
+	}
+}
+
+func TestTagsHasPropagatesOtherErrors(t *testing.T) {
+	operations, _ := newTagTestOperations(t, http.StatusInternalServerError,
+		`{"NeutronError":{"type":"ServiceUnavailable","message":"down"}}`)
+	has, err := operations.Has(context.Background(), "one")
+	if !IsErrorClass(err, ErrorClassServer) {
+		t.Fatalf("Has() error = %v, want server class", err)
+	}
+	if has {
+		t.Fatal("Has() = true on error, want false")
+	}
+}

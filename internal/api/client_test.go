@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 type recordingHTTPClient struct {
@@ -107,11 +108,47 @@ func TestClientValidation(t *testing.T) {
 		{Token: "token"},
 		{Endpoint: "https://network.example.test"},
 		{Endpoint: "/relative", Token: "token"},
+		{Endpoint: "https://net work.example.test", Token: "token"},
 	}
 
 	for _, config := range tests {
 		if _, err := NewClient(config); err == nil {
 			t.Fatalf("NewClient(%+v) returned nil error", config)
 		}
+	}
+}
+
+func TestClientDefaultsToTimeoutHTTPClient(t *testing.T) {
+	client, err := NewClient(Config{Endpoint: "https://network.example.test", Token: "token"})
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	httpClient, ok := client.httpClient.(*http.Client)
+	if !ok {
+		t.Fatalf("httpClient = %T, want *http.Client", client.httpClient)
+	}
+	if httpClient.Timeout != 120*time.Second {
+		t.Fatalf("Timeout = %v, want 120s", httpClient.Timeout)
+	}
+}
+
+func TestClientRejectsInvalidMethod(t *testing.T) {
+	httpClient := &recordingHTTPClient{}
+	client, err := NewClient(Config{
+		Endpoint:   "https://network.example.test",
+		Token:      "token",
+		HTTPClient: httpClient,
+	})
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	_, err = client.do(context.Background(), "BAD METHOD", "/v2.0/networks", nil, nil)
+	if _, ok := errors.AsType[*ClientError](err); !ok {
+		t.Fatalf("do() error = %v, want ClientError", err)
+	}
+	if len(httpClient.requests) != 0 {
+		t.Fatalf("request count = %d, want 0", len(httpClient.requests))
 	}
 }
