@@ -1,0 +1,36 @@
+variables:
+  GO_VERSION: '1.26'
+  GOLANGCI_VERSION: 'v2.13'
+
+stages:
+  - test
+
+.test:
+  stage: test
+  tags:
+    - kube-dev
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+lint:
+  extends:
+    - .test
+  image: docker-registry.selectel.ru/golangci/golangci-lint:$GOLANGCI_VERSION
+  script:
+    - make lint
+
+unit-tests:
+  extends:
+    - .test
+  image: docker-registry.selectel.ru/library/golang:$GO_VERSION
+  script:
+    - make cover
+  coverage: /total:\s+\(statements\)\s+\d+.\d+%/
+  artifacts:
+    name: coverage
+    paths:
+      - coverage.out
