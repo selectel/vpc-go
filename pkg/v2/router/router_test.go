@@ -17,7 +17,7 @@ func newClient(t *testing.T, responses ...*http.Response) (*vpc.Client, *testuti
 	return testutil.NewClient(t, responses...)
 }
 
-const routerModel = `{"router":{"id":"id","status":"BUILD","blocked":true,"ha":true,` +
+const routerModel = `{"router":{"id":"id","status":"ACTIVE","blocked":true,"ha":true,` +
 	`"external_gateway_info":{"network_id":"ext","enable_snat":true,` +
 	`"external_fixed_ips":[{"subnet_id":"sub","ip_address":"192.0.2.1"}]}}}`
 
@@ -63,7 +63,7 @@ func TestRouterGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
-	if got.ID != "id" || got.Status != "BUILD" || !got.HA {
+	if got.ID != "id" || got.Status != "ACTIVE" || !got.HA {
 		t.Fatalf("Get() = %+v", got)
 	}
 	testutil.AssertRequest(t, transport.Requests[0], http.MethodGet, "/v2.0/routers/id")
