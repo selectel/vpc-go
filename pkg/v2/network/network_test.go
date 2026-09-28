@@ -10,7 +10,7 @@ import (
 	vpc "github.com/selectel/vpc-go/pkg/v2"
 )
 
-const networkModel = `{"network":{"id":"id","name":"net","status":"BUILD","shared":true,` +
+const networkModel = `{"network":{"id":"id","name":"net","status":"ACTIVE","shared":true,` +
 	`"router:external":true,"blocked":true,` +
 	`"is_public":true,"is_dns_enabled":true,"dns_domain":"example.test.","revision_number":2}}`
 
@@ -32,7 +32,7 @@ func TestNetworkCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if created.Status != "BUILD" || !created.Blocked || !created.RouterExternal ||
+	if created.Status != "ACTIVE" || !created.Blocked || !created.RouterExternal ||
 		created.DNSDomain != "example.test." {
 		t.Fatalf("created network = %+v", created)
 	}
